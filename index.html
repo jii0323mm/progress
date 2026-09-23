@@ -83,13 +83,13 @@ h2{font-size:15px;font-weight:700;margin:0 0 10px;color:var(--muted)}
 .tag.restock{background:var(--done-soft);color:var(--done);border-color:transparent;font-weight:700}
 
 /* the rail: the production line */
-.rail{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin:4px 0 4px}
+.rail{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin:4px 0 4px}
 .seg{height:8px;border-radius:2px;background:var(--sunk);border:1px solid var(--line)}
 .seg.past{background:var(--ink);border-color:var(--ink)}
 .seg.par{background:var(--brass-soft);border-color:var(--brass)}
 .seg.now{background:var(--brass);border-color:var(--brass)}
 .seg.now.blocked{background:repeating-linear-gradient(-45deg,var(--wait) 0 4px,var(--wait-soft) 4px 8px);border-color:var(--wait)}
-.rail-n{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;font-family:var(--num);font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px}
+.rail-n{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;font-family:var(--num);font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px}
 .rail-n span.on{color:var(--brass);font-weight:700}
 .dates{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .note{font-size:14px;color:var(--muted);margin:0 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
@@ -165,9 +165,16 @@ details summary{cursor:pointer;font-weight:700;color:var(--muted);margin-bottom:
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbyqlun_Phb362ZYliGIPbUucSmQGkp8NNVzHRUtIpUG733snELYWoJf3AG6fiQsFQqc/exec';
 const USERS = ['星J','皓鈞','宏毅','曹楊'];
-const STAGES = ['研發打樣','樣品測試','預告拍攝','包裝製作','大貨生產','發售預熱','正式發售','出貨中','補貨'];
+const STAGES = ['研發打樣測試','預告拍攝','包裝製作','大貨生產','發售預熱','正式發售','出貨中','補貨'];
+const OLD_STAGE = {'研發打樣':'研發打樣測試','樣品測試':'研發打樣測試'};
 const WAITS = ['無','等 PCB','等雷射切割','等五金零件','等材料','等廠商回覆','其他'];
-const PARALLEL = ['預告拍攝','包裝製作','發售預熱'];
+// 目前階段可複選：以逗號存成一欄；舊資料的「並行」欄位一併併入
+function stagesOf(p){
+  const raw=((p.stage||'')+','+(p.parallel||'')).split(',').map(x=>OLD_STAGE[x.trim()]||x.trim());
+  const list=STAGES.filter(s=>raw.includes(s));
+  return list.length?list:[STAGES[0]];
+}
+const idxOf = p => stagesOf(p).map(s=>STAGES.indexOf(s));
 const POLL_MS = 30000;
 
 const store = {
@@ -210,7 +217,7 @@ function ago(iso){
 
 // date flags: returns list of {label, cls}
 function dateTags(p){
-  const out=[]; const si=STAGES.indexOf(p.stage);
+  const out=[]; const cur=stagesOf(p); const si=Math.max(...idxOf(p));
   const mk=(name, ds, doneWhen)=>{
     if(!ds) return; const n=daysUntil(ds);
     if(doneWhen){ out.push({label:name+' '+shortDate(ds),cls:''}); return; }
@@ -219,8 +226,7 @@ function dateTags(p){
     else out.push({label:name+' '+shortDate(ds),cls:''});
   };
   if(p.waiting && p.waiting!=='無') mk('預計到貨', p.waitingEta, false);
-  const parallel=(p.parallel||'').split(',').filter(Boolean);
-  mk('拍攝', p.shootDate, si>STAGES.indexOf('預告拍攝') && !parallel.includes('預告拍攝'));
+  mk('拍攝', p.shootDate, si>STAGES.indexOf('預告拍攝') && !cur.includes('預告拍攝'));
   mk('發售', p.launchDate, si>=STAGES.indexOf('正式發售'));
   return out;
 }
@@ -280,26 +286,22 @@ function render(){
 }
 
 function railHTML(p){
-  const si=STAGES.indexOf(p.stage); const par=(p.parallel||'').split(',').filter(Boolean);
+  const on=idxOf(p); const first=Math.min(...on);
   const segs=STAGES.map((s,i)=>{
     let c='seg';
-    if(i===si) c+=' now'+(isWaiting(p)?' blocked':'');
-    else if(i<si) c+=' past';
-    else if(par.includes(s)) c+=' par';
+    if(on.includes(i)) c+=' now'+(isWaiting(p)?' blocked':'');
+    else if(i<first) c+=' past';
     return `<span class="${c}" title="${esc(s)}"></span>`;
   }).join('');
-  const nums=STAGES.map((s,i)=>`<span class="${i===si?'on':''}">${i+1}</span>`).join('');
+  const nums=STAGES.map((s,i)=>`<span class="${on.includes(i)?'on':''}">${i+1}</span>`).join('');
   return `<div class="rail" aria-hidden="true">${segs}</div><div class="rail-n" aria-hidden="true">${nums}</div>`;
 }
 
 function cardHTML(p){
-  const par=(p.parallel||'').split(',').filter(Boolean).filter(x=>x!==p.stage);
   const tags=dateTags(p);
-  const si=STAGES.indexOf(p.stage);
   return `<button class="card ${isWaiting(p)?'is-wait':''}" data-open="${esc(p.id)}">
     <div class="card-h"><h3 class="card-name">${esc(p.name)}</h3><span class="ver">v${esc(p.version||1)}</span></div>
-    <div class="stage-now"><b>${si+1}. ${esc(p.stage)}</b>
-      ${par.map(x=>`<span class="tag">並行：${esc(x)}</span>`).join('')}
+    <div class="stage-now">${stagesOf(p).map(x=>`<b>${STAGES.indexOf(x)+1}. ${esc(x)}</b>`).join('<span aria-hidden="true">＋</span>')}
       ${isWaiting(p)?`<span class="tag wait">${esc(p.waiting)}</span>`:''}
     </div>
     ${railHTML(p)}
@@ -345,6 +347,7 @@ function bindMain(){
 function openEditor(id, mode){
   const base = id ? S.projects.find(p=>p.id===id) : null;
   const d = base ? Object.assign({}, base) : {name:'',stage:STAGES[0],parallel:'',waiting:'無',waitingEta:'',version:'1',owner:'',shootDate:'',launchDate:'',note:'',archived:''};
+  d.stage=stagesOf(d).join(','); d.parallel='';
   if(mode==='restock'){ d.archived=''; d.stage='補貨'; }
   S.editing={base, d, mode};
   drawEditor();
@@ -356,18 +359,18 @@ function closeEditor(){ $('#scrim').classList.remove('open'); document.body.styl
 
 function needsWhy(){
   const {base,d}=S.editing; if(!base) return false;
-  return ['stage','version','waiting','archived'].some(k=>(base[k]||'')!==(d[k]||''));
+  if(stagesOf(base).join(',')!==d.stage) return true;
+  return ['version','waiting','archived'].some(k=>(base[k]||'')!==(d[k]||''));
 }
 
 function drawEditor(){
   const {base,d,mode}=S.editing;
-  const par=(d.parallel||'').split(',').filter(Boolean);
+  const cur=d.stage.split(',');
   const archived=d.archived==='1';
   $('#sheet').innerHTML=`
   <h3>${base?esc(base.name):'新增專案'}${mode==='restock'?' <span class="tag restock">補貨</span>':''}<button class="x" id="x" aria-label="關閉">×</button></h3>
   <div class="f"><label for="e-name">專案名稱</label><input type="text" id="e-name" value="${esc(d.name)}"></div>
-  <div class="f"><span class="lb">目前階段</span><div class="opts">${STAGES.map((s,i)=>`<button class="opt" data-stage="${esc(s)}" aria-pressed="${d.stage===s}"><span class="n">${i+1}</span>${esc(s)}</button>`).join('')}</div></div>
-  <div class="f"><span class="lb">同時進行中（可複選）</span><div class="opts">${PARALLEL.map(s=>`<button class="opt" data-par="${esc(s)}" aria-pressed="${par.includes(s)}">${esc(s)}</button>`).join('')}</div></div>
+  <div class="f"><span class="lb">目前階段（可複選）</span><div class="opts">${STAGES.map((s,i)=>`<button class="opt" data-stage="${esc(s)}" aria-pressed="${cur.includes(s)}"><span class="n">${i+1}</span>${esc(s)}</button>`).join('')}</div></div>
   <div class="f"><span class="lb">正在等待</span><div class="opts">${WAITS.map(s=>`<button class="opt w" data-wait="${esc(s)}" aria-pressed="${d.waiting===s}">${esc(s)}</button>`).join('')}</div></div>
   ${d.waiting!=='無'?`<div class="f"><label for="e-eta">預計到貨日</label><input type="date" id="e-eta" value="${esc(d.waitingEta)}"></div>`:''}
   <div class="row2">
@@ -402,10 +405,10 @@ function redraw(){ syncFields(); const h=$('#hist'); const keep=h?h.innerHTML:nu
 function bindEditor(){
   const e=S.editing;
   $('#x').onclick=closeEditor;
-  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{ e.d.stage=b.dataset.stage; redraw(); });
-  document.querySelectorAll('[data-par]').forEach(b=>b.onclick=()=>{
-    const set=new Set((e.d.parallel||'').split(',').filter(Boolean)); const v=b.dataset.par;
-    set.has(v)?set.delete(v):set.add(v); e.d.parallel=PARALLEL.filter(x=>set.has(x)).join(','); redraw(); });
+  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{
+    const set=new Set(e.d.stage.split(',').filter(Boolean)); const v=b.dataset.stage;
+    if(set.has(v)){ if(set.size>1) set.delete(v); } else set.add(v);
+    e.d.stage=STAGES.filter(x=>set.has(x)).join(','); redraw(); });
   document.querySelectorAll('[data-wait]').forEach(b=>b.onclick=()=>{ e.d.waiting=b.dataset.wait; if(e.d.waiting==='無') e.d.waitingEta=''; redraw(); });
   $("#vminus").onclick=()=>{ e.d.version=String(Math.max(1,(+e.d.version||1)-1)); redraw(); };
   $("#vplus").onclick=()=>{ e.d.version=String((+e.d.version||1)+1); redraw(); };
