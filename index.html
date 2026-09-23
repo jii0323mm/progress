@@ -182,9 +182,16 @@ const S = { user: store.get('pt_user'), pass: store.get('pt_pass'), projects: []
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-async function api(action, payload){
-  const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, pass:S.pass, user:S.user }, payload||{})) });
-  const data = await res.json();
+async function api(action, payload, tries){
+  if(tries===undefined) tries = action==='save' ? 2 : 0;
+  let data;
+  try{
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, pass:S.pass, user:S.user }, payload||{})) });
+    data = JSON.parse(await res.text());
+  }catch(err){
+    if(tries < 2){ await new Promise(r=>setTimeout(r, 1500*(tries+1))); return api(action, payload, tries+1); }
+    throw new Error('伺服器暫時沒有回應，請稍後再試');
+  }
   if(!data.ok){ const e = new Error(data.error || '發生錯誤'); e.code = data.code; throw e; }
   return data;
 }
@@ -221,8 +228,8 @@ const isWaiting = p => p.waiting && p.waiting!=='無';
 const isHot = p => dateTags(p).some(t=>t.hot);
 
 async function load(silent){
-  if(!S.user || !S.pass) return;
-  S.loading=true; if(!silent) render(); else spin(true);
+  if(!S.user || !S.pass || S.inflight) return;
+  S.inflight=true; S.loading=true; if(!silent) render(); else spin(true);
   try{
     const d=await api('list');
     S.projects=d.projects; S.logs=d.logs; S.lastSync=new Date(); S.error='';
@@ -230,7 +237,7 @@ async function load(silent){
     if(e.code==='auth'){ store.del('pt_pass'); S.pass=null; S.error='團隊密碼錯誤，請重新輸入'; }
     else S.error='無法連線：'+e.message;
   }
-  S.loading=false; spin(false); render();
+  S.inflight=false; S.loading=false; spin(false); render();
 }
 function spin(on){ const b=$('#refresh'); if(b) b.classList.toggle('spin',on); }
 
