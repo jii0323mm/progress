@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="進度追蹤">
+<meta name="theme-color" content="#1B2433">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>進度追蹤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6E9ED; --surface:#FFFFFF; --sunk:#F1F3F5; --ink:#1B2433; --muted:#5B6576; --line:#CBD1D9;
+  --brass:#9A6B1F; --brass-soft:#F4EAD8;
+  --wait:#B87400; --wait-soft:#FFF1D2;
+  --late:#B3261E; --late-soft:#FBE3E1;
+  --done:#2F6B4F; --done-soft:#DDEFE5;
+  --num:'Barlow Condensed','Noto Sans TC',system-ui,sans-serif;
+  --sans:'Noto Sans TC',-apple-system,'PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161D; --surface:#1C222C; --sunk:#161B23; --ink:#E5E8ED; --muted:#98A1B0; --line:#303947;
+    --brass:#D6A64F; --brass-soft:#3A301F;
+    --wait:#E8A93A; --wait-soft:#3A2F17;
+    --late:#F0857C; --late-soft:#3D2020;
+    --done:#7CC7A0; --done-soft:#1D3328;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:#fff}
+@media (prefers-color-scheme: dark){.top{background:#0B0E13}}
+.top-in{max-width:1400px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:18px;letter-spacing:.02em;margin-right:auto}
+.brand small{display:block;font-weight:400;font-size:12px;opacity:.65;letter-spacing:0}
+.me{background:rgba(255,255,255,.12);border:0;border-radius:999px;padding:6px 14px;color:#fff}
+.btn-add{background:var(--brass);border:0;border-radius:8px;padding:8px 14px;color:#fff;font-weight:700}
+@media (prefers-color-scheme: dark){.btn-add{color:#1B1405}}
+.iconbtn{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;width:38px;height:38px;display:grid;place-items:center}
+.iconbtn.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* layout */
+.wrap{max-width:1400px;margin:0 auto;padding:16px 18px 60px;display:grid;gap:24px}
+@media (min-width:1000px){.wrap{grid-template-columns:minmax(0,1fr) 330px;align-items:start}.side{position:sticky;top:84px}}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 13px;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip .n{font-family:var(--num);font-weight:600;margin-left:4px;opacity:.7}
+.grid{display:grid;gap:14px;align-items:start;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+h2{font-size:15px;font-weight:700;margin:0 0 10px;color:var(--muted)}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px 12px;text-align:left;width:100%;display:block;position:relative}
+.card:hover{border-color:var(--muted)}
+.card.is-wait{border-left:5px solid var(--wait);padding-left:12px}
+.card-h{display:flex;align-items:baseline;gap:10px}
+.card-name{font-size:18px;font-weight:700;margin:0;line-height:1.3;flex:1;min-width:0;overflow-wrap:anywhere}
+.ver{font-family:var(--num);font-weight:700;font-size:20px;color:var(--brass);line-height:1}
+.stage-now{margin:6px 0 10px;font-size:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.stage-now b{font-weight:700}
+.tag{font-size:12px;border-radius:4px;padding:1px 7px;background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.tag.wait{background:var(--wait-soft);color:var(--wait);border-color:transparent;font-weight:700}
+.tag.late{background:var(--late-soft);color:var(--late);border-color:transparent;font-weight:700}
+.tag.soon{background:var(--brass-soft);color:var(--brass);border-color:transparent;font-weight:700}
+.tag.restock{background:var(--done-soft);color:var(--done);border-color:transparent;font-weight:700}
+
+/* the rail: the production line */
+.rail{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin:4px 0 4px}
+.seg{height:8px;border-radius:2px;background:var(--sunk);border:1px solid var(--line)}
+.seg.past{background:var(--ink);border-color:var(--ink)}
+.seg.par{background:var(--brass-soft);border-color:var(--brass)}
+.seg.now{background:var(--brass);border-color:var(--brass)}
+.seg.now.blocked{background:repeating-linear-gradient(-45deg,var(--wait) 0 4px,var(--wait-soft) 4px 8px);border-color:var(--wait)}
+.rail-n{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;font-family:var(--num);font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px}
+.rail-n span.on{color:var(--brass);font-weight:700}
+.dates{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.note{font-size:14px;color:var(--muted);margin:0 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.meta{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;display:flex;gap:10px;flex-wrap:wrap}
+
+/* side */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.feed{list-style:none;margin:0;padding:0;max-height:60vh;overflow:auto}
+.feed li{padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.feed li:last-child{border-bottom:0}
+.feed .who{font-weight:700}
+.feed .when{color:var(--muted);font-size:12px;float:right}
+.feed .chg{display:block;color:var(--ink)}
+.feed .why{display:block;color:var(--muted);white-space:pre-line}
+.done-list{display:grid;gap:8px}
+.done-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.done-item .nm{flex:1;font-weight:500}
+.btn-sm{border:1px solid var(--line);background:var(--sunk);border-radius:6px;padding:4px 10px;font-size:13px}
+.btn-sm.green{background:var(--done-soft);color:var(--done);border-color:transparent;font-weight:700}
+details summary{cursor:pointer;font-weight:700;color:var(--muted);margin-bottom:10px}
+.empty{padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,14,20,.55);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.scrim.open{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+@media (min-width:700px){.scrim{align-items:center}.sheet{border-radius:14px;max-height:88vh}}
+.sheet h3{margin:0 0 14px;font-size:19px;display:flex;align-items:center;gap:8px}
+.sheet h3 .x{margin-left:auto;background:none;border:0;font-size:24px;line-height:1;color:var(--muted)}
+.f{margin-bottom:14px}
+.f>label,.f>.lb{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.f input[type=text],.f input[type=date],.f select,.f textarea{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:9px 11px;min-height:42px}
+.f textarea{min-height:70px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{border:1px solid var(--line);background:var(--sunk);border-radius:6px;padding:6px 10px;font-size:14px}
+.opt[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.opt.w[aria-pressed="true"]{background:var(--wait);border-color:var(--wait);color:#fff}
+.opt .n{font-family:var(--num);font-weight:600;opacity:.6;margin-right:4px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:42px;height:42px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);font-size:20px}
+.stepper output{font-family:var(--num);font-size:28px;font-weight:700;color:var(--brass);min-width:56px;text-align:center}
+.why-box{background:var(--brass-soft);border-radius:10px;padding:12px;margin-bottom:14px}
+.why-box label{color:var(--brass)!important}
+.why-box textarea{background:var(--surface)!important}
+.req{color:var(--late);font-weight:400;font-size:12px;margin-left:6px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.btn{border:0;border-radius:8px;padding:11px 18px;font-weight:700}
+.btn.primary{background:var(--ink);color:var(--surface);flex:1}
+.btn.ghost{background:var(--sunk);border:1px solid var(--line)}
+.btn:disabled{opacity:.5}
+.hist{margin-top:20px;border-top:1px solid var(--line);padding-top:12px}
+.err{color:var(--late);font-size:14px;margin:8px 0 0}
+
+/* login */
+.gate{max-width:420px;margin:12vh auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.gate h1{margin:0 0 4px;font-size:22px}
+.gate p{color:var(--muted);margin:0 0 18px}
+.who-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.who-pick .opt{padding:12px;font-size:16px;font-weight:700}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:999px;font-size:14px;z-index:80;display:none}
+.toast.show{display:block}
+.status{font-size:12px;opacity:.7}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="scrim" id="scrim"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyqlun_Phb362ZYliGIPbUucSmQGkp8NNVzHRUtIpUG733snELYWoJf3AG6fiQsFQqc/exec';
+const USERS = ['星J','皓鈞','宏毅','曹楊'];
+const STAGES = ['研發打樣','樣品測試','預告拍攝','包裝製作','大貨生產','發售預熱','正式發售','出貨中','補貨'];
+const WAITS = ['無','等 PCB','等雷射切割','等五金零件','等材料','等廠商回覆','其他'];
+const PARALLEL = ['預告拍攝','包裝製作','發售預熱'];
+const POLL_MS = 30000;
+
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return store._m[k] || null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){ store._m[k]=v } },
+  del(k){ try{ localStorage.removeItem(k) }catch(e){ delete store._m[k] } },
+  _m:{}
+};
+
+const S = { user: store.get('pt_user'), pass: store.get('pt_pass'), projects: [], logs: [], filter: 'all', loading: false, lastSync: null, error: '', editing: null };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function api(action, payload){
+  const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(Object.assign({ action, pass:S.pass, user:S.user }, payload||{})) });
+  const data = await res.json();
+  if(!data.ok){ const e = new Error(data.error || '發生錯誤'); e.code = data.code; throw e; }
+  return data;
+}
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysUntil(ds){ if(!ds) return null; const a=new Date(todayStr()+'T00:00:00'), b=new Date(ds+'T00:00:00'); return Math.round((b-a)/86400000); }
+function shortDate(ds){ if(!ds) return ''; const p=ds.split('-'); return +p[1]+'/'+(+p[2]); }
+function ago(iso){
+  if(!iso) return ''; const s=(Date.now()-new Date(iso).getTime())/1000;
+  if(s<60) return '剛剛'; if(s<3600) return Math.floor(s/60)+' 分鐘前'; if(s<86400) return Math.floor(s/3600)+' 小時前';
+  if(s<86400*7) return Math.floor(s/86400)+' 天前';
+  const d=new Date(iso); return (d.getMonth()+1)+'/'+d.getDate();
+}
+
+// date flags: returns list of {label, cls}
+function dateTags(p){
+  const out=[]; const si=STAGES.indexOf(p.stage);
+  const mk=(name, ds, doneWhen)=>{
+    if(!ds) return; const n=daysUntil(ds);
+    if(doneWhen){ out.push({label:name+' '+shortDate(ds),cls:''}); return; }
+    if(n<0) out.push({label:name+' '+shortDate(ds)+'（已過 '+(-n)+' 天）',cls:'late',hot:2});
+    else if(n<=7) out.push({label:name+' '+shortDate(ds)+(n===0?'（今天）':'（'+n+' 天後）'),cls:'soon',hot:1});
+    else out.push({label:name+' '+shortDate(ds),cls:''});
+  };
+  if(p.waiting && p.waiting!=='無') mk('預計到貨', p.waitingEta, false);
+  const parallel=(p.parallel||'').split(',').filter(Boolean);
+  mk('拍攝', p.shootDate, si>STAGES.indexOf('預告拍攝') && !parallel.includes('預告拍攝'));
+  mk('發售', p.launchDate, si>=STAGES.indexOf('正式發售'));
+  return out;
+}
+const isWaiting = p => p.waiting && p.waiting!=='無';
+const isHot = p => dateTags(p).some(t=>t.hot);
+
+async function load(silent){
+  if(!S.user || !S.pass) return;
+  S.loading=true; if(!silent) render(); else spin(true);
+  try{
+    const d=await api('list');
+    S.projects=d.projects; S.logs=d.logs; S.lastSync=new Date(); S.error='';
+  }catch(e){
+    if(e.code==='auth'){ store.del('pt_pass'); S.pass=null; S.error='團隊密碼錯誤，請重新輸入'; }
+    else S.error='無法連線：'+e.message;
+  }
+  S.loading=false; spin(false); render();
+}
+function spin(on){ const b=$('#refresh'); if(b) b.classList.toggle('spin',on); }
+
+function render(){
+  const app=$('#app');
+  if(!S.user || !S.pass){ app.innerHTML=gateHTML(); bindGate(); return; }
+  const active=S.projects.filter(p=>p.archived!=='1').sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const done=S.projects.filter(p=>p.archived==='1').sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const counts={all:active.length, wait:active.filter(isWaiting).length, hot:active.filter(isHot).length, mine:active.filter(p=>p.owner===S.user).length};
+  let shown=active;
+  if(S.filter==='wait') shown=active.filter(isWaiting);
+  if(S.filter==='hot') shown=active.filter(isHot);
+  if(S.filter==='mine') shown=active.filter(p=>p.owner===S.user);
+  const sync=S.lastSync? '同步於 '+S.lastSync.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}) : '同步中…';
+  app.innerHTML=`
+  <header class="top"><div class="top-in">
+    <div class="brand">產品進度<small class="status">${esc(S.error||sync)}</small></div>
+    <button class="me" id="me" title="切換使用者">${esc(S.user)}</button>
+    <button class="iconbtn" id="refresh" aria-label="重新整理"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+    <button class="btn-add" id="add">新增專案</button>
+  </div></header>
+  <main class="wrap">
+    <section>
+      <div class="filters" role="group" aria-label="篩選">
+        ${[['all','全部'],['wait','等待中'],['hot','日期將到'],['mine','我負責']].map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${S.filter===k}">${l}<span class="n">${counts[k]}</span></button>`).join('')}
+      </div>
+      ${S.loading && !S.projects.length ? '<div class="empty">載入中…</div>' :
+        shown.length ? `<div class="grid">${shown.map(cardHTML).join('')}</div>` :
+        `<div class="empty">${S.filter==='all'?'還沒有進行中的專案，按右上角「新增專案」開始。':'沒有符合這個篩選的專案。'}</div>`}
+      ${done.length?`<details style="margin-top:28px"><summary>已完成（${done.length}）</summary><div class="done-list">${done.map(p=>`
+        <div class="done-item"><span class="nm">${esc(p.name)} <span class="tag">v${esc(p.version)}</span></span>
+        <button class="btn-sm" data-open="${esc(p.id)}">查看</button>
+        <button class="btn-sm green" data-restock="${esc(p.id)}">補貨</button></div>`).join('')}</div></details>`:''}
+    </section>
+    <aside class="side"><div class="panel"><h2>近期動態</h2>
+      ${S.logs.length?`<ul class="feed">${S.logs.slice(0,40).map(feedHTML).join('')}</ul>`:'<p class="note">還沒有任何修改紀錄。</p>'}
+    </div></aside>
+  </main>`;
+  bindMain();
+}
+
+function railHTML(p){
+  const si=STAGES.indexOf(p.stage); const par=(p.parallel||'').split(',').filter(Boolean);
+  const segs=STAGES.map((s,i)=>{
+    let c='seg';
+    if(i===si) c+=' now'+(isWaiting(p)?' blocked':'');
+    else if(i<si) c+=' past';
+    else if(par.includes(s)) c+=' par';
+    return `<span class="${c}" title="${esc(s)}"></span>`;
+  }).join('');
+  const nums=STAGES.map((s,i)=>`<span class="${i===si?'on':''}">${i+1}</span>`).join('');
+  return `<div class="rail" aria-hidden="true">${segs}</div><div class="rail-n" aria-hidden="true">${nums}</div>`;
+}
+
+function cardHTML(p){
+  const par=(p.parallel||'').split(',').filter(Boolean).filter(x=>x!==p.stage);
+  const tags=dateTags(p);
+  const si=STAGES.indexOf(p.stage);
+  return `<button class="card ${isWaiting(p)?'is-wait':''}" data-open="${esc(p.id)}">
+    <div class="card-h"><h3 class="card-name">${esc(p.name)}</h3><span class="ver">v${esc(p.version||1)}</span></div>
+    <div class="stage-now"><b>${si+1}. ${esc(p.stage)}</b>
+      ${par.map(x=>`<span class="tag">並行：${esc(x)}</span>`).join('')}
+      ${isWaiting(p)?`<span class="tag wait">${esc(p.waiting)}</span>`:''}
+    </div>
+    ${railHTML(p)}
+    ${tags.length?`<div class="dates">${tags.map(t=>`<span class="tag ${t.cls}">${esc(t.label)}</span>`).join('')}</div>`:''}
+    ${p.note?`<p class="note">${esc(p.note)}</p>`:''}
+    <div class="meta">${p.owner?`<span>負責：${esc(p.owner)}</span>`:''}<span>${esc(p.updatedBy)} ${esc(ago(p.updatedAt))}更新</span></div>
+  </button>`;
+}
+
+function feedHTML(l){
+  return `<li><span class="when">${esc(ago(l.time))}</span><span class="who">${esc(l.user)}</span> 改了 <b>${esc(l.projectName)}</b>
+    <span class="chg">${esc(l.change)}</span>${l.note?`<span class="why">說明：${esc(l.note)}</span>`:''}</li>`;
+}
+
+function gateHTML(){
+  return `<div class="gate"><h1>產品進度</h1><p>第一次使用，請選擇你的名字並輸入團隊密碼。這台裝置之後會記住。</p>
+    <div class="lb" style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px">我是</div>
+    <div class="who-pick">${USERS.map(u=>`<button class="opt" data-u="${esc(u)}" aria-pressed="${S.user===u}">${esc(u)}</button>`).join('')}</div>
+    <div class="f"><label for="pass">團隊密碼</label><input type="text" id="pass" autocomplete="off" value="${esc(S.pass||'')}"></div>
+    ${S.error?`<p class="err">${esc(S.error)}</p>`:''}
+    <button class="btn primary" id="go" style="width:100%">進入</button></div>`;
+}
+function bindGate(){
+  document.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{ S.user=b.dataset.u; document.querySelectorAll('[data-u]').forEach(x=>x.setAttribute('aria-pressed',x===b)); });
+  $('#go').onclick=()=>{
+    const pw=$('#pass').value.trim();
+    if(!S.user){ S.error='請先選擇你的名字'; render(); return; }
+    if(!pw){ S.error='請輸入團隊密碼'; render(); return; }
+    S.pass=pw; S.error=''; store.set('pt_user',S.user); store.set('pt_pass',pw); load();
+  };
+}
+
+function bindMain(){
+  document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ S.filter=b.dataset.f; render(); });
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openEditor(b.dataset.open));
+  document.querySelectorAll('[data-restock]').forEach(b=>b.onclick=()=>openEditor(b.dataset.restock,'restock'));
+  $('#add').onclick=()=>openEditor(null);
+  $('#refresh').onclick=()=>load(true);
+  $('#me').onclick=()=>{ if(confirm('要切換使用者嗎？（目前是 '+S.user+'）')){ store.del('pt_user'); S.user=null; render(); } };
+}
+
+/* ---------- editor ---------- */
+function openEditor(id, mode){
+  const base = id ? S.projects.find(p=>p.id===id) : null;
+  const d = base ? Object.assign({}, base) : {name:'',stage:STAGES[0],parallel:'',waiting:'無',waitingEta:'',version:'1',owner:'',shootDate:'',launchDate:'',note:'',archived:''};
+  if(mode==='restock'){ d.archived=''; d.stage='補貨'; }
+  S.editing={base, d, mode};
+  drawEditor();
+  $('#scrim').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(base) loadHistory(base.id);
+}
+function closeEditor(){ $('#scrim').classList.remove('open'); document.body.style.overflow=''; S.editing=null; }
+
+function needsWhy(){
+  const {base,d}=S.editing; if(!base) return false;
+  return ['stage','version','waiting','archived'].some(k=>(base[k]||'')!==(d[k]||''));
+}
+
+function drawEditor(){
+  const {base,d,mode}=S.editing;
+  const par=(d.parallel||'').split(',').filter(Boolean);
+  const archived=d.archived==='1';
+  $('#sheet').innerHTML=`
+  <h3>${base?esc(base.name):'新增專案'}${mode==='restock'?' <span class="tag restock">補貨</span>':''}<button class="x" id="x" aria-label="關閉">×</button></h3>
+  <div class="f"><label for="e-name">專案名稱</label><input type="text" id="e-name" value="${esc(d.name)}"></div>
+  <div class="f"><span class="lb">目前階段</span><div class="opts">${STAGES.map((s,i)=>`<button class="opt" data-stage="${esc(s)}" aria-pressed="${d.stage===s}"><span class="n">${i+1}</span>${esc(s)}</button>`).join('')}</div></div>
+  <div class="f"><span class="lb">同時進行中（可複選）</span><div class="opts">${PARALLEL.map(s=>`<button class="opt" data-par="${esc(s)}" aria-pressed="${par.includes(s)}">${esc(s)}</button>`).join('')}</div></div>
+  <div class="f"><span class="lb">正在等待</span><div class="opts">${WAITS.map(s=>`<button class="opt w" data-wait="${esc(s)}" aria-pressed="${d.waiting===s}">${esc(s)}</button>`).join('')}</div></div>
+  ${d.waiting!=='無'?`<div class="f"><label for="e-eta">預計到貨日</label><input type="date" id="e-eta" value="${esc(d.waitingEta)}"></div>`:''}
+  <div class="row2">
+    <div class="f"><span class="lb">樣品版本</span><div class="stepper"><button id="vminus" aria-label="版本減一">−</button><output id="e-ver">v${esc(d.version||1)}</output><button id="vplus" aria-label="版本加一">+</button></div></div>
+    <div class="f"><label for="e-owner">負責人</label><select id="e-owner"><option value="">未指定</option>${USERS.map(u=>`<option ${d.owner===u?'selected':''}>${esc(u)}</option>`).join('')}</select></div>
+  </div>
+  <div class="row2">
+    <div class="f"><label for="e-shoot">預計拍攝日</label><input type="date" id="e-shoot" value="${esc(d.shootDate)}"></div>
+    <div class="f"><label for="e-launch">預計發售日</label><input type="date" id="e-launch" value="${esc(d.launchDate)}"></div>
+  </div>
+  <div class="f"><label for="e-note">專案備註（會顯示在卡片上）</label><textarea id="e-note" placeholder="例如：目前卡在彈簧力道，下一版換材質">${esc(d.note)}</textarea></div>
+  <div class="why-box f"><label for="e-why">這次修改的說明${base?`<span class="req" id="req">${needsWhy()?'改了階段或版本，請寫原因':''}</span>`:''}</label>
+    <textarea id="e-why" placeholder="例如：v2 把外殼改成 3mm 壓克力，因為 v1 太容易裂">${esc(S.editing.why||'')}</textarea></div>
+  <p class="err" id="e-err"></p>
+  <div class="actions">
+    <button class="btn primary" id="save">儲存變更</button>
+    ${base&&mode!=='restock'?(archived?`<button class="btn ghost" id="arch">移回進行中</button>`:`<button class="btn ghost" id="arch">移到已完成</button>`):''}
+  </div>
+  ${base?`<div class="hist"><h2>這個專案的修改紀錄</h2><ul class="feed" id="hist"><li class="note">載入中…</li></ul></div>`:''}`;
+  bindEditor();
+}
+
+function syncFields(){
+  const e=S.editing; if(!e) return;
+  const g=id=>{ const el=$('#'+id); return el?el.value:undefined; };
+  e.d.name=g('e-name'); e.d.owner=g('e-owner'); e.d.shootDate=g('e-shoot'); e.d.launchDate=g('e-launch'); e.d.note=g('e-note');
+  if(g('e-eta')!==undefined) e.d.waitingEta=g('e-eta');
+  e.why=g('e-why');
+}
+function redraw(){ syncFields(); const h=$('#hist'); const keep=h?h.innerHTML:null; drawEditor(); if(keep&&$('#hist')) $('#hist').innerHTML=keep; }
+
+function bindEditor(){
+  const e=S.editing;
+  $('#x').onclick=closeEditor;
+  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{ e.d.stage=b.dataset.stage; redraw(); });
+  document.querySelectorAll('[data-par]').forEach(b=>b.onclick=()=>{
+    const set=new Set((e.d.parallel||'').split(',').filter(Boolean)); const v=b.dataset.par;
+    set.has(v)?set.delete(v):set.add(v); e.d.parallel=PARALLEL.filter(x=>set.has(x)).join(','); redraw(); });
+  document.querySelectorAll('[data-wait]').forEach(b=>b.onclick=()=>{ e.d.waiting=b.dataset.wait; if(e.d.waiting==='無') e.d.waitingEta=''; redraw(); });
+  $("#vminus").onclick=()=>{ e.d.version=String(Math.max(1,(+e.d.version||1)-1)); redraw(); };
+  $("#vplus").onclick=()=>{ e.d.version=String((+e.d.version||1)+1); redraw(); };
+  $('#save').onclick=()=>save();
+  const a=$('#arch'); if(a) a.onclick=()=>{ syncFields(); e.d.archived=e.d.archived==='1'?'':'1'; save(); };
+}
+
+async function save(){
+  syncFields();
+  const e=S.editing; const err=$('#e-err'); err.textContent='';
+  if(!e.d.name.trim()){ err.textContent='請輸入專案名稱'; return; }
+  if(needsWhy() && !(e.why||'').trim()){ err.textContent='改了階段、版本、等待狀態或完成狀態，請在「這次修改的說明」寫下原因'; $('#e-why').focus(); return; }
+  const btn=$('#save'); btn.disabled=true; btn.textContent='儲存中…';
+  try{
+    const project=Object.assign({}, e.d); if(e.base) project.id=e.base.id;
+    const r=await api('save',{project, note:(e.why||'').trim(), baseUpdatedAt:e.base?e.base.updatedAt:''});
+    S.projects=r.projects; S.logs=r.logs; S.lastSync=new Date();
+    closeEditor(); render(); toast(r.unchanged?'沒有變更':'已儲存');
+  }catch(ex){ err.textContent=ex.message; btn.disabled=false; btn.textContent='儲存變更'; }
+}
+
+async function loadHistory(id){
+  try{
+    const r=await api('history',{id});
+    const h=$('#hist'); if(!h||!S.editing||!S.editing.base||S.editing.base.id!==id) return;
+    h.innerHTML=r.logs.length?r.logs.map(l=>`<li><span class="when">${esc(new Date(l.time).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))}</span><span class="who">${esc(l.user)}</span><span class="chg">${esc(l.change)}</span>${l.note?`<span class="why">說明：${esc(l.note)}</span>`:''}</li>`).join(''):'<li class="note">還沒有紀錄</li>';
+  }catch(ex){ const h=$('#hist'); if(h) h.innerHTML='<li class="err">'+esc(ex.message)+'</li>'; }
+}
+
+$('#scrim').addEventListener('click',ev=>{ if(ev.target.id==='scrim') closeEditor(); });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&S.editing) closeEditor(); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(true); });
+setInterval(()=>{ if(!document.hidden) load(true); }, POLL_MS);
+setInterval(()=>{ if(!S.editing && S.user && S.pass) render(); }, 60000);
+
+render(); load();
+</script>
+</body>
+</html>
