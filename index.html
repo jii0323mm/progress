@@ -83,8 +83,13 @@ a{color:inherit}
 .col-h .n{font-family:var(--num);font-weight:700;font-size:17px;color:var(--muted)}
 .dot{width:10px;height:10px;border-radius:50%}
 .dot.s0{background:var(--muted)} .dot.s1{background:var(--prog)} .dot.s2{background:var(--done)}
-.quick{display:flex;gap:6px;margin-bottom:10px}
-.quick input{flex:1;min-width:0;border:1px dashed var(--line);background:var(--surface);border-radius:8px;padding:8px 10px}
+.qa{margin-bottom:10px;background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:8px}
+.quick{display:flex;gap:6px}
+.asg{display:flex;align-items:center;gap:5px;margin-top:7px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.asg button{border:1.5px solid var(--line);background:var(--sunk);border-radius:999px;padding:2px 10px;font-size:13px;color:var(--ink)}
+.asg button[aria-pressed="true"]{color:#fff;font-weight:700}
+.by{color:var(--muted)}
+.quick input{flex:1;min-width:0;border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:8px 10px}
 .quick button{border:0;background:var(--ink);color:var(--surface);border-radius:8px;padding:0 12px;font-weight:700}
 .list{display:grid;gap:8px;min-height:40px}
 .empty{color:var(--muted);font-size:14px;text-align:center;padding:16px 8px}
@@ -194,7 +199,7 @@ const store = {
   _m:{}
 };
 const S = { user:store.get('pt_user'), pass:store.get('pt_pass'), view:store.get('tk_view')||'mine', product:'',
-  tasks:[], products:[], lastSync:null, error:'', loading:false, inflight:false, showOldDone:false, editing:null, dragId:null };
+  assignee:store.get('tk_assign')||store.get('pt_user'), tasks:[], products:[], lastSync:null, error:'', loading:false, inflight:false, showOldDone:false, editing:null, dragId:null };
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -266,7 +271,8 @@ function sorted(list, status){
   });
 }
 function visible(){
-  return S.tasks.filter(t=>(S.view==='all'||t.owner===S.user)&&(!S.product||t.product===S.product));
+  const byView = t => S.view==='all' || (S.view==='mine' ? t.owner===S.user : (t.createdBy===S.user && t.owner!==S.user));
+  return S.tasks.filter(t=>byView(t)&&(!S.product||t.product===S.product));
 }
 
 /* ---------- render ---------- */
@@ -292,6 +298,7 @@ function render(){
     <div class="brand">任務看板<small>${esc(sync)}</small></div>
     <div class="seg" role="group" aria-label="檢視">
       <button data-view="mine" aria-pressed="${S.view==='mine'}">我的任務</button>
+      <button data-view="sent" aria-pressed="${S.view==='sent'}">我指派的</button>
       <button data-view="all" aria-pressed="${S.view==='all'}">全部</button>
     </div>
     <button class="me" id="me" title="切換使用者">${esc(S.user)}</button>
@@ -302,7 +309,7 @@ function render(){
     <div class="alert">
       ${late?`<span class="pill late">逾期 ${late}</span>`:''}
       ${soon?`<span class="pill soon">今明到期 ${soon}</span>`:''}
-      ${!late&&!soon&&!S.loading?`<span class="pill ok">${S.view==='mine'?'你':'大家'}目前沒有快到期的任務</span>`:''}
+      ${!late&&!soon&&!S.loading?`<span class="pill ok">${S.view==='mine'?'你':S.view==='sent'?'你指派的任務':'大家'}目前沒有快到期的任務</span>`:''}
     </div>
     ${prods.length?`<select id="pf" aria-label="依產品篩選"><option value="">全部產品</option>${prods.map(p=>`<option ${S.product===p?'selected':''}>${esc(p)}</option>`).join('')}</select>`:''}
   </div>
@@ -313,7 +320,8 @@ function render(){
       if(st==='完成'&&!S.showOldDone){ const keep=list.filter(t=>(t.doneAt||t.updatedAt||'')>=cutoff); hidden=list.length-keep.length; list=keep; }
       return `<section class="col" data-col="${st}">
         <div class="col-h"><span class="dot s${i}"></span><h2>${st}</h2><span class="n">${list.length+hidden}</span></div>
-        ${st==='待辦'?`<form class="quick" id="quick"><input id="qt" placeholder="快速新增，輸入後按 Enter" aria-label="快速新增任務"><button aria-label="新增">＋</button></form>`:''}
+        ${st==='待辦'?`<div class="qa"><form class="quick" id="quick"><input id="qt" placeholder="新增任務，輸入後按 Enter" aria-label="快速新增任務"><button aria-label="新增">＋</button></form>
+          <div class="asg" role="group" aria-label="指派給">指派給 ${USERS.map(u=>`<button type="button" data-assign="${esc(u)}" aria-pressed="${S.assignee===u}" style="${S.assignee===u?`background:${COLORS[u]};border-color:${COLORS[u]}`:''}">${esc(u)}</button>`).join('')}</div></div>`:''}
         <div class="list">${list.map(cardHTML).join('')||(S.loading&&!S.tasks.length?'<div class="empty">載入中…</div>':`<div class="empty">${st==='完成'?'還沒有完成的任務':'沒有任務'}</div>`)}</div>
         ${hidden?`<button class="more" id="olddone">顯示更早完成的 ${hidden} 件</button>`:''}
       </section>`;
@@ -338,6 +346,7 @@ function cardHTML(t){
         ${t.product?`<span class="tag prod">${esc(t.product)}</span>`:''}
         ${d?`<span class="tag ${d.cls}">${esc(d.label)}</span>`:''}
         ${+t.comments?`<span class="cm">${ICON_CM}${esc(t.comments)}</span>`:''}
+        ${t.createdBy&&t.createdBy!==t.owner&&t.owner?`<span class="by">${esc(t.createdBy)} 指派</span>`:''}
         ${av}
       </div>
     </div>
@@ -354,9 +363,11 @@ function bindMain(){
   $('#quick').onsubmit=async ev=>{
     ev.preventDefault(); const v=$('#qt').value.trim(); if(!v) return;
     $('#qt').value='';
-    await saveTask({title:v,status:'待辦',owner:S.user,product:S.product||'',due:''},null,'已新增');
+    const to=S.assignee||S.user;
+    await saveTask({title:v,status:'待辦',owner:to,product:S.product||'',due:''},null, to===S.user?'已新增':'已指派給 '+to+(S.view==='mine'?'，可在「我指派的」查看':''));
     setTimeout(()=>{ const q=$('#qt'); if(q) q.focus(); },0);
   };
+  $$('[data-assign]').forEach(b=>b.onclick=()=>{ S.assignee=b.dataset.assign; store.set('tk_assign',S.assignee); render(); const q=$('#qt'); if(q) q.focus(); });
   $$('.card').forEach(c=>{
     c.onclick=ev=>{ if(ev.target.closest('.adv')) return; openEditor(c.dataset.id); };
     c.onkeydown=ev=>{ if(ev.key==='Enter') openEditor(c.dataset.id); };
@@ -431,7 +442,7 @@ function bindGate(){
 /* ---------- editor ---------- */
 function openEditor(id){
   const base=id?S.tasks.find(t=>t.id===id):null;
-  const d=base?Object.assign({},base):{title:'',owner:S.user,due:'',status:'待辦',product:S.product||''};
+  const d=base?Object.assign({},base):{title:'',owner:S.assignee||S.user,due:'',status:'待辦',product:S.product||''};
   S.editing={base,d,thread:null,file:null,draft:''};
   drawEditor();
   $('#scrim').classList.add('open'); document.body.style.overflow='hidden';
@@ -447,7 +458,7 @@ function drawEditor(){
   <div class="f"><label for="e-title">標題</label><input id="e-title" value="${esc(d.title)}" placeholder="例如：確認 SMOKEFLAKE 第三版外殼尺寸"></div>
   <div class="f"><span class="lb">狀態</span><div class="opts">${STATUS.map((s,i)=>`<button class="opt s${i}" data-st="${s}" aria-pressed="${d.status===s}">${s}</button>`).join('')}</div></div>
   <div class="row2">
-    <div class="f"><label for="e-owner">負責人</label><select id="e-owner"><option value="">未指定</option>${USERS.map(u=>`<option ${d.owner===u?'selected':''}>${esc(u)}</option>`).join('')}</select></div>
+    <div class="f"><label for="e-owner">指派給</label><select id="e-owner"><option value="">未指定</option>${USERS.map(u=>`<option ${d.owner===u?'selected':''}>${esc(u)}</option>`).join('')}</select></div>
     <div class="f"><label for="e-due">截止日</label><input type="date" id="e-due" value="${esc(d.due)}"></div>
   </div>
   <div class="f"><label for="e-prod">所屬產品（選填）</label><input id="e-prod" list="prodlist" value="${esc(d.product)}" placeholder="可選擇或自己輸入"></div>
