@@ -325,12 +325,12 @@ async function api(action,payload,tries){
   if(!data.ok){ const e=new Error(data.error||'發生錯誤'); e.code=data.code; throw e; }
   return data;
 }
-const STG=['市場分析','樣品研發','暴力測試','包裝設計','大貨生產','行銷發售','售罄補貨'], STN=['待處理','進行中','已完成'];
-function stagesHTML(p){ const s=(p.stages||'').padEnd(7,'0');
+const STG=['市場分析','樣品研發','預告拍攝','暴力測試','包裝設計','大貨生產','行銷發售','售罄補貨'], STN=['待處理','進行中','已完成'];
+function stagesHTML(p){ const s=(p.stages||'').padEnd(8,'0');
   return '<div class="stages" role="group" aria-label="進度">'+STG.map((n,i)=>'<button type="button" class="sg s'+s[i]+'" data-stg="'+p.id+'" data-i="'+i+'" title="'+n+'：'+STN[+s[i]]+'（點一下切換）">'+n+'</button>').join('')+'</div>'; }
 const LEGEND='<span class="legend"><span><i></i>待處理</span><span><i class="s1"></i>進行中</span><span><i class="s2"></i>已完成</span><span>・點一下切換</span></span>';
 function applyData(d){
-  P=d.projects.map(p=>({id:p.id,name:p.name,pos:+p.pos||0,cAt:p.createdAt||'',stages:(p.stages||'').padEnd(7,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
+  P=d.projects.map(p=>({id:p.id,name:p.name,pos:+p.pos||0,cAt:p.createdAt||'',stages:(p.stages||'').padEnd(8,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
     updatedAt:Date.parse(p.updatedAt||p.createdAt)||0,updatedBy:p.updatedBy||p.createdBy||'',
     waits:d.waits.filter(w=>w.projectId===p.id).map(w=>({id:w.id,what:w.what,eta:w.eta}))}));
   T=d.tasks.map(t=>({id:t.id,p:t.projectId,title:t.title,to:t.to,by:t.by,due:t.due,done:t.done==='1',doneAt:t.doneAt}));
@@ -546,7 +546,7 @@ document.addEventListener('click',ev=>{
   }
   if(g('#pdone')){ const p=P.find(x=>x.id===S.open); p.done=!p.done; send({type:'updateProject',projectId:p.id,fields:{done:p.done?'1':''}},p.id); toast(p.done?p.name+' 已移到已完成專案':p.name+' 已移回進行中'); closeP(); render(); return; }
   if(g('#x')||ev.target.id==='scrim'){ closeP(); return; }
-  if(el=g('[data-stg]')){ ev.preventDefault(); ev.stopPropagation(); const p=P.find(x=>x.id===el.dataset.stg); if(!p) return; const i=+el.dataset.i, a=(p.stages||'').padEnd(7,'0').split(''); a[i]=String((+a[i]+1)%3); p.stages=a.join('');
+  if(el=g('[data-stg]')){ ev.preventDefault(); ev.stopPropagation(); const p=P.find(x=>x.id===el.dataset.stg); if(!p) return; const i=+el.dataset.i, a=(p.stages||'').padEnd(8,'0').split(''); a[i]=String((+a[i]+1)%3); p.stages=a.join('');
     send({type:'updateProject',projectId:p.id,fields:{stages:p.stages}},p.id); toast(STG[i]+'：'+STN[+a[i]]); S.open?drawSheet():0; render(); return; }
   if(el=g('[data-p]')){ ev.preventDefault(); openP(el.dataset.p); return; }
 });
