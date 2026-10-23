@@ -59,7 +59,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 16px 60px}
 .grid{display:grid;gap:14px;grid-template-columns:1fr}
 .pc .ph{margin-bottom:10px}
 .pc .ph .meta{margin-left:8px}
-.cols{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:12px}
+.cols{display:grid;grid-template-columns:1fr 1.4fr;gap:12px}
 @media (max-width:820px){.cols{grid-template-columns:1fr}}
 .col{background:var(--sunk);border-radius:8px;padding:10px 12px;min-width:0}
 .col h4{margin:0 0 8px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
@@ -330,7 +330,7 @@ function stagesHTML(p){ const s=(p.stages||'').padEnd(7,'0');
   return '<div class="stages" role="group" aria-label="進度">'+STG.map((n,i)=>'<button type="button" class="sg s'+s[i]+'" data-stg="'+p.id+'" data-i="'+i+'" title="'+n+'：'+STN[+s[i]]+'（點一下切換）">'+n+'</button>').join('')+'</div>'; }
 const LEGEND='<span class="legend"><span><i></i>待處理</span><span><i class="s1"></i>進行中</span><span><i class="s2"></i>已完成</span><span>・點一下切換</span></span>';
 function applyData(d){
-  P=d.projects.map(p=>({id:p.id,name:p.name,stages:(p.stages||'').padEnd(7,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
+  P=d.projects.map(p=>({id:p.id,name:p.name,pos:+p.pos||0,cAt:p.createdAt||'',stages:(p.stages||'').padEnd(7,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
     updatedAt:Date.parse(p.updatedAt||p.createdAt)||0,updatedBy:p.updatedBy||p.createdBy||'',
     waits:d.waits.filter(w=>w.projectId===p.id).map(w=>({id:w.id,what:w.what,eta:w.eta}))}));
   T=d.tasks.map(t=>({id:t.id,p:t.projectId,title:t.title,to:t.to,by:t.by,due:t.due,done:t.done==='1',doneAt:t.doneAt}));
@@ -380,9 +380,16 @@ function render(){
   if(S.open) drawSheet();
 }
 
+function byPos(a,b){ return (a.pos||1e9)-(b.pos||1e9) || String(a.cAt||'').localeCompare(String(b.cAt||'')); }
+function moveP(id,dir){
+  const act=P.filter(p=>!p.done).sort(byPos), i=act.findIndex(p=>p.id===id), j=i+dir;
+  if(i<0||j<0||j>=act.length) return;
+  [act[i],act[j]]=[act[j],act[i]]; act.forEach((p,k)=>p.pos=k+1);
+  send({type:'reorder',ids:act.map(p=>p.id)}); render();
+}
 function projPage(){
   const act=P.filter(p=>!p.done).map(p=>Object.assign({p},info(p)));
-  act.sort((a,b)=>b.p.updatedAt-a.p.updatedAt); // 最近有更新的排最上面
+  act.sort((a,b)=>byPos(a.p,b.p)); // 固定順序，更新不會換位置
   const cnt=h=>act.filter(a=>a.health===h).length;
   const doneP=P.filter(p=>p.done);
   return '<div class="lead"><h1>'+act.length+' 個專案進行中</h1>'+
@@ -392,7 +399,7 @@ function projPage(){
     '<div class="addf w2 addp"><input class="inp" id="np" placeholder="新增專案名稱，例如：硬幣發射器" value="'+esc(S.npDraft||'')+'"><span></span><button type="button" class="btn" id="addp">新增專案</button></div>'+
     (act.length?'<div class="grid">'+act.map(cardHTML).join('')+'</div>':'<div class="empty">還沒有進行中的專案，在上方輸入名稱新增第一個</div>')+
     (doneP.length?'<details class="fold"><summary>已完成專案（'+doneP.length+'）</summary><div class="dlist">'+
-      doneP.map(p=>'<div class="drow" data-p="'+p.id+'"><span class="nm">'+esc(p.name)+'</span><span class="chip">v'+p.ver+'</span><span class="chip">'+esc(p.status)+'</span></div>').join('')+
+      doneP.map(p=>'<div class="drow" data-p="'+p.id+'"><span class="nm">'+esc(p.name)+'</span><span class="chip">v'+p.ver+'</span></div>').join('')+
     '</div></details>':'');
 }
 
@@ -402,7 +409,6 @@ function cardHTML(a){
   return '<article class="pc '+a.health+'" data-p="'+p.id+'" tabindex="0">'+
     '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+stagesHTML(p)+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>'+
     '<div class="cols">'+
-      '<section class="col"><h4>目前狀態</h4>'+(p.status?'<p class="status">'+esc(p.status)+'</p>':'<p class="none">還沒填寫</p>')+'</section>'+
       '<section class="col"><h4>等待項目<span class="n">'+ws.length+'</span></h4>'+
         (ws.length?'<ul class="items">'+ws.map(w=>{const l=w.eta&&days(w.eta)<0;
           return '<li class="'+(l?'late':'wait')+'"><b>'+esc(w.what)+'</b><span>'+(waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span></li>';}).join('')+'</ul>':'<p class="none">沒有在等的東西</p>')+'</section>'+
@@ -461,7 +467,7 @@ function drawSheet(){
     '<div class="sh-h"><input class="inp nm" id="pname" value="'+esc(p.name)+'" aria-label="專案名稱"><button class="x" id="x" aria-label="關閉">×</button></div>'+
     '<div class="row2"><div><span class="lb">樣品版本</span><div class="stepper"><button id="vm" aria-label="版本減一">−</button><output>v'+p.ver+'</output><button id="vp" aria-label="版本加一">+</button></div></div>'+
       '<div><label class="lb" for="launch">預計發售日</label><input class="inp" type="date" id="launch" value="'+esc(p.launch)+'"></div></div>'+
-    '<div class="sec">進度 '+LEGEND+'</div>'+stagesHTML(p)+'<div class="sec"><label for="pstatus">目前狀態</label></div><input class="inp" id="pstatus" placeholder="例如：v3 樣品打樣中，等零件到齊組裝" value="'+esc(p.status)+'">'+
+    '<div class="sec">目前狀態 '+LEGEND+'</div>'+stagesHTML(p)+
     '<div class="sec">新增任務</div>'+
     '<div class="addf"><input class="inp" id="nt" placeholder="任務內容" value="'+esc(d.title)+'">'+
       '<select class="inp" id="nto" aria-label="指派給">'+USERS.map(u=>'<option '+((d.to||S.me)===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
@@ -482,7 +488,7 @@ function drawSheet(){
     '<div class="sec">所有進行中的任務（'+open.length+'）</div>'+
     (open.length?'<ul class="tl">'+open.map(x=>taskRow(x,false)).join('')+'</ul>':'<div class="empty">沒有進行中的任務</div>')+
     (done.length?'<details class="fold" style="margin-top:14px"><summary>已完成任務（'+done.length+'）</summary><ul class="tl">'+done.map(x=>taskRow(x,false)).join('')+'</ul></details>':'')+
-    '<div class="foot"><button class="btn ghost" id="pdel">刪除專案</button><span class="meta" style="flex:1;text-align:right">'+(p.done?'這個專案已完成':'')+'</span><button class="btn ghost" id="pdone">'+(p.done?'移回進行中':'標示專案完成')+'</button></div>';
+    '<div class="foot"><button class="btn ghost" id="pdel">刪除專案</button>'+(p.done?'':'<button class="btn ghost" id="pup" title="在總覽中往上移">↑ 上移</button><button class="btn ghost" id="pdn" title="在總覽中往下移">↓ 下移</button>')+'<span class="meta" style="flex:1;text-align:right">'+(p.done?'這個專案已完成':'')+'</span><button class="btn ghost" id="pdone">'+(p.done?'移回進行中':'標示專案完成')+'</button></div>';
   $('#sheet').scrollTop=y;
 }
 function openP(id){ S.edit=null; S.delArm=null; S.open=id; S.draft={title:'',to:'',due:'',wwhat:'',weta:''}; $('#scrim').classList.add('open'); document.body.style.overflow='hidden'; drawSheet(); }
@@ -529,6 +535,8 @@ document.addEventListener('click',ev=>{
   if(g('#vm')){ const p=P.find(x=>x.id===S.open); if(p.ver>1){ p.ver--; send({type:'updateProject',projectId:p.id,fields:{ver:p.ver}},p.id); } render(); return; }
   if(g('#vp')){ const p=P.find(x=>x.id===S.open); p.ver++; send({type:'updateProject',projectId:p.id,fields:{ver:p.ver}},p.id); render(); return; }
   if(g('#addp')){ addProject(); return; }
+  if(g('#pup')){ moveP(S.open,-1); toast('已上移'); return; }
+  if(g('#pdn')){ moveP(S.open,1); toast('已下移'); return; }
   if(g('#pdel')){
     if(S.delArm!==S.open){ S.delArm=S.open; toast('再按一次「刪除專案」確認刪除（任務也會一起刪除）'); return; }
     const i=P.findIndex(x=>x.id===S.open), nm=P[i].name; P.splice(i,1);
@@ -563,7 +571,7 @@ document.addEventListener('input',ev=>{
 });
 function addProject(){
   const name=$('#np').value.trim(); if(!name){ $('#np').focus(); toast('請先輸入專案名稱'); return; }
-  const p={id:nid(),name,status:'',ver:1,waits:[],launch:'',done:false,updatedAt:Date.now(),updatedBy:S.me}; P.push(p);
+  const p={id:nid(),name,status:'',pos:0,cAt:new Date().toISOString(),ver:1,waits:[],launch:'',done:false,updatedAt:Date.now(),updatedBy:S.me}; P.push(p);
   send({type:'addProject',id:p.id,name});
   S.npDraft=''; render(); openP(p.id); toast('已新增專案：'+name+'，可以開始填狀態和指派任務');
 }
