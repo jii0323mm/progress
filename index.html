@@ -234,6 +234,16 @@ details.fold summary{cursor:pointer;font-weight:700;color:var(--muted);margin-bo
 .gate h1{margin:0 0 4px;font-size:22px}
 .gate .opts .opt{flex:1;padding:10px;font-weight:700}
 .err{color:var(--late);font-size:14px}
+.ph h3{flex:0 1 auto!important}
+.stages{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.sg{border:1px solid var(--line);background:var(--sunk);color:var(--muted);font-size:12px;line-height:1;padding:5px 7px;border-radius:5px;font-weight:500;white-space:nowrap}
+.sg.s1{background:#F6E7C8;border-color:#D9A853;color:#7A5212;font-weight:700}
+.sg.s2{background:var(--brass);border-color:var(--brass);color:#fff}
+button.sg:hover{border-color:var(--ink)}
+.sheet .stages{margin:2px 0 4px}.sheet .sg{font-size:13px;padding:7px 9px}
+.legend{display:inline-flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:3px;vertical-align:-1px;border:1px solid var(--line);background:var(--sunk)}
+.legend i.s1{background:#F6E7C8;border-color:#D9A853}.legend i.s2{background:var(--brass);border-color:var(--brass)}
 </style>
 </head>
 <body>
@@ -315,8 +325,12 @@ async function api(action,payload,tries){
   if(!data.ok){ const e=new Error(data.error||'發生錯誤'); e.code=data.code; throw e; }
   return data;
 }
+const STG=['市場分析','樣品研發','暴力測試','包裝設計','大貨生產','行銷發售','售罄補貨'], STN=['待處理','進行中','已完成'];
+function stagesHTML(p){ const s=(p.stages||'').padEnd(7,'0');
+  return '<div class="stages" role="group" aria-label="進度">'+STG.map((n,i)=>'<button type="button" class="sg s'+s[i]+'" data-stg="'+p.id+'" data-i="'+i+'" title="'+n+'：'+STN[+s[i]]+'（點一下切換）">'+n+'</button>').join('')+'</div>'; }
+const LEGEND='<span class="legend"><span><i></i>待處理</span><span><i class="s1"></i>進行中</span><span><i class="s2"></i>已完成</span><span>・點一下切換</span></span>';
 function applyData(d){
-  P=d.projects.map(p=>({id:p.id,name:p.name,status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
+  P=d.projects.map(p=>({id:p.id,name:p.name,stages:(p.stages||'').padEnd(7,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
     updatedAt:Date.parse(p.updatedAt||p.createdAt)||0,updatedBy:p.updatedBy||p.createdBy||'',
     waits:d.waits.filter(w=>w.projectId===p.id).map(w=>({id:w.id,what:w.what,eta:w.eta}))}));
   T=d.tasks.map(t=>({id:t.id,p:t.projectId,title:t.title,to:t.to,by:t.by,due:t.due,done:t.done==='1',doneAt:t.doneAt}));
@@ -374,7 +388,7 @@ function projPage(){
   return '<div class="lead"><h1>'+act.length+' 個專案進行中</h1>'+
     (cnt('red')?'<span class="pill red">卡住 '+cnt('red')+'</span>':'')+
     (cnt('amber')?'<span class="pill amber">等待中 '+cnt('amber')+'</span>':'')+
-    (cnt('green')?'<span class="pill green">順利 '+cnt('green')+'</span>':'')+'</div>'+
+    (cnt('green')?'<span class="pill green">順利 '+cnt('green')+'</span>':'')+LEGEND+'</div>'+
     '<div class="addf w2 addp"><input class="inp" id="np" placeholder="新增專案名稱，例如：硬幣發射器" value="'+esc(S.npDraft||'')+'"><span></span><button type="button" class="btn" id="addp">新增專案</button></div>'+
     (act.length?'<div class="grid">'+act.map(cardHTML).join('')+'</div>':'<div class="empty">還沒有進行中的專案，在上方輸入名稱新增第一個</div>')+
     (doneP.length?'<details class="fold"><summary>已完成專案（'+doneP.length+'）</summary><div class="dlist">'+
@@ -386,7 +400,7 @@ function cardHTML(a){
   const p=a.p;
   const ws=p.waits.slice().sort((x,y)=>(x.eta||'9999').localeCompare(y.eta||'9999'));
   return '<article class="pc '+a.health+'" data-p="'+p.id+'" tabindex="0">'+
-    '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>'+
+    '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+stagesHTML(p)+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>'+
     '<div class="cols">'+
       '<section class="col"><h4>目前狀態</h4>'+(p.status?'<p class="status">'+esc(p.status)+'</p>':'<p class="none">還沒填寫</p>')+'</section>'+
       '<section class="col"><h4>等待項目<span class="n">'+ws.length+'</span></h4>'+
@@ -447,7 +461,7 @@ function drawSheet(){
     '<div class="sh-h"><input class="inp nm" id="pname" value="'+esc(p.name)+'" aria-label="專案名稱"><button class="x" id="x" aria-label="關閉">×</button></div>'+
     '<div class="row2"><div><span class="lb">樣品版本</span><div class="stepper"><button id="vm" aria-label="版本減一">−</button><output>v'+p.ver+'</output><button id="vp" aria-label="版本加一">+</button></div></div>'+
       '<div><label class="lb" for="launch">預計發售日</label><input class="inp" type="date" id="launch" value="'+esc(p.launch)+'"></div></div>'+
-    '<div class="sec"><label for="pstatus">目前狀態</label></div><input class="inp" id="pstatus" placeholder="例如：v3 樣品打樣中，等零件到齊組裝" value="'+esc(p.status)+'">'+
+    '<div class="sec">進度 '+LEGEND+'</div>'+stagesHTML(p)+'<div class="sec"><label for="pstatus">目前狀態</label></div><input class="inp" id="pstatus" placeholder="例如：v3 樣品打樣中，等零件到齊組裝" value="'+esc(p.status)+'">'+
     '<div class="sec">新增任務</div>'+
     '<div class="addf"><input class="inp" id="nt" placeholder="任務內容" value="'+esc(d.title)+'">'+
       '<select class="inp" id="nto" aria-label="指派給">'+USERS.map(u=>'<option '+((d.to||S.me)===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
@@ -524,6 +538,8 @@ document.addEventListener('click',ev=>{
   }
   if(g('#pdone')){ const p=P.find(x=>x.id===S.open); p.done=!p.done; send({type:'updateProject',projectId:p.id,fields:{done:p.done?'1':''}},p.id); toast(p.done?p.name+' 已移到已完成專案':p.name+' 已移回進行中'); closeP(); render(); return; }
   if(g('#x')||ev.target.id==='scrim'){ closeP(); return; }
+  if(el=g('[data-stg]')){ ev.preventDefault(); ev.stopPropagation(); const p=P.find(x=>x.id===el.dataset.stg); if(!p) return; const i=+el.dataset.i, a=(p.stages||'').padEnd(7,'0').split(''); a[i]=String((+a[i]+1)%3); p.stages=a.join('');
+    send({type:'updateProject',projectId:p.id,fields:{stages:p.stages}},p.id); toast(STG[i]+'：'+STN[+a[i]]); S.open?drawSheet():0; render(); return; }
   if(el=g('[data-p]')){ ev.preventDefault(); openP(el.dataset.p); return; }
 });
 document.addEventListener('keydown',ev=>{
