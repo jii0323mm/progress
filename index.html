@@ -286,6 +286,15 @@ input.inp[type=date]{min-width:136px}
 .tr.u4{border-left:4px solid #5E9E6B;padding-left:9px}
 .legend i.u0{background:#9E2F25;border-color:#9E2F25}.legend i.u1{background:#D98278;border-color:#D98278}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
 .legend i.u3{background:#D9B32E;border-color:#D9B32E}.legend i.u4{background:#5E9E6B;border-color:#5E9E6B}
+/* 最上方快速列 */
+.qbar{flex-basis:100%;display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.qbar::-webkit-scrollbar{display:none}
+.qbar button{flex:0 0 auto;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#E2E8F0;font-size:13px;padding:5px 12px;white-space:nowrap}
+.qbar .qadd{background:#22A06B;border-color:#22A06B;color:#fff;font-weight:700}
+.pkr{display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.pkn{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+@keyframes pcflash{0%{box-shadow:0 0 0 4px #3B7CF0}100%{box-shadow:0 0 0 0 rgba(59,124,240,0)}}
+.pc.flash{animation:pcflash 1.6s ease-out}
 /* 打勾確認、今天完成的變灰 */
 .cfw{display:inline-flex;gap:4px;flex:0 0 auto;align-items:center}
 .cfm{border:0;border-radius:999px;background:var(--acc,#5458E8);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;white-space:nowrap}
@@ -501,7 +510,8 @@ function render(){
       '<button data-tab="proj" aria-pressed="'+(S.tab==='proj')+'">專案總覽</button>'+
       '<button data-tab="mine" aria-pressed="'+(S.tab==='mine')+'">我的任務<span class="badge '+(myLate?'hot':'')+'">'+mine.length+'</span></button>'+
     '</div>'+
-    '<label class="me">我是<select id="me">'+USERS.map(u=>'<option '+(u===S.me?'selected':'')+'>'+u+'</option>').join('')+'</select></label>';
+    '<label class="me">我是<select id="me">'+USERS.map(u=>'<option '+(u===S.me?'selected':'')+'>'+u+'</option>').join('')+'</select></label>'+
+    (S.loaded&&S.tab==='proj'?'<div class="qbar"><button type="button" class="qadd" data-qadd>＋ 新增</button>'+P.filter(p=>!p.done).sort(byPos).map(p=>'<button type="button" data-jump="'+p.id+'">'+esc(shortP(p.name))+'</button>').join('')+'</div>':'');
   if(!S.loaded) return;
   $('#main').innerHTML = (S.err?'<p class="err">'+esc(S.err)+'</p>':'') + (S.tab==='proj' ? projPage() : minePage());
   if(S.open) drawSheet();
@@ -640,7 +650,12 @@ function drawSheet(){
   $('#sheet').scrollTop=y;
 }
 function openP(id){ S.edit=null; S.delArm=null; S.open=id; S.draft={title:'',to:'',due:'',wwhat:'',weta:''}; $('#scrim').classList.add('open'); document.body.style.overflow='hidden'; drawSheet(); }
-function closeP(){ S.open=null; $('#scrim').classList.remove('open'); document.body.style.overflow=''; }
+// 快速新增：先選專案，再打開該專案並跳到新增欄位
+function openPick(){ S.open=null; S.pick=true; $('#scrim').classList.add('open'); document.body.style.overflow='hidden';
+  $('#sheet').innerHTML='<div class="sh-h"><h3 style="margin:0;flex:1">要新增到哪個專案？</h3><button class="x" id="x" aria-label="關閉">×</button></div><div class="pick">'+
+    P.filter(p=>!p.done).sort(byPos).map(p=>'<div class="pkr"><span class="pkn">'+esc(p.name)+'</span><button type="button" class="btn sm" data-pt="'+p.id+'">＋任務</button><button type="button" class="btn ghost sm" data-pw="'+p.id+'">＋等待</button></div>').join('')+'</div>'; }
+function jumpAdd(id,f){ S.pick=false; openP(id); setTimeout(()=>{ const el=$(f); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.focus(); } },60); }
+function closeP(){ S.open=null; S.pick=false; $('#scrim').classList.remove('open'); document.body.style.overflow=''; }
 function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove('show'),2200); }
 
 /* ---------- 事件 ---------- */
@@ -687,6 +702,10 @@ document.addEventListener('click',ev=>{
   if(el=g('[data-wdone]')){ const p=P.find(x=>x.id===S.open), w=p.waits.find(x=>x.id===el.dataset.wdone); p.waits=p.waits.filter(x=>x!==w); send({type:'deleteWait',id:w.id,arrived:true},p.id); toast(w.what+' 已到，從等待清單移除'); render(); return; }
   if(g('#vm')){ const p=P.find(x=>x.id===S.open); if(p.ver>1){ p.ver--; send({type:'updateProject',projectId:p.id,fields:{ver:p.ver}},p.id); } render(); return; }
   if(g('#vp')){ const p=P.find(x=>x.id===S.open); p.ver++; send({type:'updateProject',projectId:p.id,fields:{ver:p.ver}},p.id); render(); return; }
+  if(g('[data-qadd]')){ openPick(); return; }
+  if(el=g('[data-pt]')){ jumpAdd(el.dataset.pt,'#nt'); return; }
+  if(el=g('[data-pw]')){ jumpAdd(el.dataset.pw,'#nw'); return; }
+  if(el=g('[data-jump]')){ const c=document.querySelector('.pc[data-p="'+el.dataset.jump+'"]'); if(c){ const h=document.querySelector('.top').offsetHeight; window.scrollTo({top:c.getBoundingClientRect().top+window.scrollY-h-10,behavior:'smooth'}); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); } return; }
   if(g('#addp')){ addProject(); return; }
   if(g('#pup')){ moveP(S.open,-1); toast('已上移'); return; }
   if(g('#pdn')){ moveP(S.open,1); toast('已下移'); return; }
