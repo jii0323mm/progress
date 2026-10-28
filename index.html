@@ -300,6 +300,11 @@ input.inp[type=date]{min-width:136px}
 @keyframes pcflash{0%{box-shadow:0 0 0 4px #3B7CF0}100%{box-shadow:0 0 0 0 rgba(59,124,240,0)}}
 .pc.flash{animation:pcflash 1.6s ease-out}
 /* 打勾確認、今天完成的變灰 */
+.items .chk{flex:0 0 20px;height:20px;font-size:11px;margin:0}
+.wl .chk{flex:0 0 24px;height:24px;margin:0}
+.items li.isdone b,.wl li.isdone b{color:#94A3B8!important;text-decoration:line-through;font-weight:500}
+.items li.isdone > span{color:#94A3B8!important}
+.wl li.isdone{opacity:.75}
 .cfw{display:inline-flex;gap:4px;flex:0 0 auto;align-items:center}
 .cfm{border:0;border-radius:999px;background:var(--acc,#5458E8);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;white-space:nowrap}
 .cfx{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;padding:3px 8px;white-space:nowrap}
@@ -395,6 +400,8 @@ const days=s=>Math.round((new Date(s+'T00:00:00')-T0)/864e5);
 // 今天打勾的任務先變灰色留著，隔天才收起來
 const doneToday=x=>x.done&&x.doneAt===D(0);
 const vis=x=>!x.done||doneToday(x);
+const wchk=w=>w.done?'<button class="chk on" data-wchk="'+w.id+'" aria-label="取消已到">✓</button>':(S.cf==='w'+w.id?'<span class="cfw"><button class="cfm" data-wcfm="'+w.id+'">確認到了</button><button class="cfx" data-cfx>取消</button></span>':'<button class="chk" data-wchk="'+w.id+'" aria-label="標示已到">✓</button>');
+function findW(id){ for(const p of P){ let w=p.waits.find(x=>x.id===id); if(w) return {p,w}; w=(p.wd||[]).find(x=>x.id===id); if(w) return {p,w}; } return null; }
 const chkBtn=x=>x.done?'<button class="chk on" data-chk="'+x.id+'" aria-label="取消完成">✓</button>':(S.cf===x.id?'<span class="cfw"><button class="cfm" data-cfm="'+x.id+'">確認完成</button><button class="cfx" data-cfx>取消</button></span>':'<button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button>');
 const md=s=>{const p=s.split('-');return +p[1]+'/'+(+p[2]);};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -472,7 +479,8 @@ const LEGEND='<span class="legend"><span><i></i>待處理</span><span><i class="
 function applyData(d){
   P=d.projects.map(p=>({id:p.id,name:p.name,pos:+p.pos||0,cAt:p.createdAt||'',stages:(p.stages||'').padEnd(8,'0'),status:p.status,ver:+p.ver||1,launch:p.launch,done:p.done==='1',
     updatedAt:Date.parse(p.updatedAt||p.createdAt)||0,updatedBy:p.updatedBy||p.createdBy||'',
-    waits:d.waits.filter(w=>w.projectId===p.id).map(w=>({id:w.id,what:w.what,eta:w.eta}))}));
+    waits:d.waits.filter(w=>w.projectId===p.id&&w.done!=='1').map(w=>({id:w.id,what:w.what,eta:w.eta})),
+    wd:d.waits.filter(w=>w.projectId===p.id&&w.done==='1'&&w.doneAt===D(0)).map(w=>({id:w.id,what:w.what,eta:w.eta,done:true,doneAt:w.doneAt}))}));
   T=d.tasks.map(t=>({id:t.id,p:t.projectId,title:t.title,to:t.to,by:t.by,due:t.due,done:t.done==='1',doneAt:t.doneAt}));
   S.loaded=true; S.err='';
 }
@@ -539,12 +547,13 @@ function todayCard(){
   const ws=[]; P.filter(p=>!p.done).forEach(p=>p.waits.forEach(w=>{ if(w.eta&&days(w.eta)<=3) ws.push({w,p}); }));
   ws.sort((a,b)=>a.w.eta.localeCompare(b.w.eta));
   const grp=[['已逾期','late',x=>days(x.due)<0],['今天','',x=>days(x.due)===0],['明天','',x=>days(x.due)===1],['3 天內','',x=>days(x.due)>=2]];
-  const wrow=o=>{ const k=days(o.w.eta); return '<li class="trc '+urg(k)+' wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip '+urg(k)+'">'+(k<0?'過 '+(-k)+' 天':dayTxt(k))+'</span></li>'; };
+  const wdn=[]; P.filter(p=>!p.done).forEach(p=>(p.wd||[]).forEach(w=>wdn.push({w,p})));
+  const wrow=o=>{ const k=o.w.eta?days(o.w.eta):99; return '<li class="trc '+(o.w.done?'isdone':urg(k))+' wt" data-p="'+o.p.id+'">'+wchk(o.w)+'<span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip '+(o.w.done?'':urg(k))+'">'+(o.w.done?'已到':k<0?'過 '+(-k)+' 天':dayTxt(k))+'</span></li>'; };
   const n=tk.filter(x=>!x.done).length+ws.length, d=new Date();
   return '<section class="today"><div class="th"><h2>近三天要處理</h2><span class="tdate">今天 '+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
     grp.map(g=>{ const l=tk.filter(x=>!x.done&&g[2](x)); return l.length?'<div class="grp '+g[1]+'">'+g[0]+'<span class="n">'+l.length+'</span></div><ul class="tlc">'+l.map(todayRow).join('')+'</ul>':''; }).join('')+
     (ws.length?'<div class="grp">該到的等待項目<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
-    (tk.some(x=>x.done)?'<div class="grp">今天已完成<span class="n">'+tk.filter(x=>x.done).length+'</span></div><ul class="tlc">'+tk.filter(x=>x.done).map(todayRow).join('')+'</ul>':'')+
+    (tk.some(x=>x.done)||wdn.length?'<div class="grp">今天已完成<span class="n">'+(tk.filter(x=>x.done).length+wdn.length)+'</span></div><ul class="tlc">'+tk.filter(x=>x.done).map(todayRow).join('')+wdn.map(wrow).join('')+'</ul>':'')+
     (n?'':'<p class="none">三天內沒有到期或逾期的任務和等待項目。</p>')+
   '</section>';
 }
@@ -576,8 +585,8 @@ function cardHTML(a){
     '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+stagesHTML(p)+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>')+
     '<div class="cols">'+
       '<section class="col"><h4>等待項目<span class="n">'+ws.length+'</span></h4>'+
-        (ws.length?'<ul class="items">'+ws.map(w=>{const l=w.eta&&days(w.eta)<0;
-          return '<li class="'+(l?'late':'wait')+'"><b>'+esc(w.what)+'</b><span>'+(waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span></li>';}).join('')+'</ul>':'<p class="none">沒有在等的東西</p>')+'</section>'+
+        (ws.length||(p.wd||[]).length?'<ul class="items">'+ws.concat(p.wd||[]).map(w=>{const l=!w.done&&w.eta&&days(w.eta)<0;
+          return '<li class="'+(w.done?'isdone':l?'late':'wait')+'">'+wchk(w)+'<b>'+esc(w.what)+'</b><span>'+(w.done?'今天已到':waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span></li>';}).join('')+'</ul>':'<p class="none">沒有在等的東西</p>')+'</section>'+
       '<section class="col"><h4>待辦事項<span class="n">'+a.open.length+'</span></h4>'+
         (a.open.length||T.some(x=>x.p===p.id&&doneToday(x))?'<ul class="items">'+a.open.concat(T.filter(x=>x.p===p.id&&doneToday(x))).map(x=>{const n=x.due?days(x.due):99;
           return '<li class="'+(x.done?'isdone':n<0?'late':n<=1?'soon':'')+'">'+av(x.to)+'<span class="tt">'+esc(x.title)+'</span>'+dueChip(x)+'</li>';}).join('')+'</ul>':'<p class="none">沒有待辦事項</p>')+'</section>'+
@@ -642,14 +651,14 @@ function drawSheet(){
       '<input class="inp" type="date" id="ndue" value="'+esc(d.due)+'" aria-label="期限">'+
       '<button type="button" class="btn" id="addt">指派</button></div>'+
     '<div class="sec">正在等待（'+p.waits.length+'）</div>'+
-    (p.waits.length?'<ul class="wl">'+p.waits.map(w=>{
+    (p.waits.length||(p.wd||[]).length?'<ul class="wl">'+p.waits.map(w=>{
       if(S.edit&&S.edit.id===w.id) return '<li class="editing"><input class="inp" id="e-what" value="'+esc(w.what)+'" aria-label="等待項目">'+
         '<input class="inp" type="date" id="e-eta" value="'+esc(w.eta)+'" aria-label="預計日期">'+
         '<button type="button" class="btn ghost sm" data-cancel>取消</button><button type="button" class="btn sm" data-savew="'+w.id+'">儲存</button></li>';
       const late=w.eta&&days(w.eta)<0;
-      return '<li class="'+(late?'late':'')+'"><b>'+esc(w.what)+'</b><span class="meta">'+(waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span>'+
-        '<button type="button" class="edit" data-edit="'+w.id+'">修改</button>'+
-        '<button type="button" class="btn ghost sm" data-wdone="'+w.id+'">到了</button></li>';}).join('')+'</ul>':'')+
+      return '<li class="'+(late?'late':'')+'">'+wchk(w)+'<b>'+esc(w.what)+'</b><span class="meta">'+(waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span>'+
+        '<button type="button" class="edit" data-edit="'+w.id+'">修改</button></li>';}).join('')+
+      (p.wd||[]).map(w=>'<li class="isdone">'+wchk(w)+'<b>'+esc(w.what)+'</b><span class="meta">今天已到</span></li>').join('')+'</ul>':'')+
     '<div class="addf w2"><input class="inp" id="nw" placeholder="新增等待項目，例如：等 PCB" value="'+esc(d.wwhat||'')+'">'+
       '<input class="inp" type="date" id="nweta" value="'+esc(d.weta||'')+'" aria-label="預計日期">'+
       '<button type="button" class="btn" id="addw">新增</button></div>'+
@@ -683,6 +692,12 @@ document.addEventListener('click',ev=>{
   if(g('[data-cfx]')){ S.cf=null; render(); return; }
   if(el=g('[data-cfm]')){ const x=T.find(y=>y.id===el.dataset.cfm); S.cf=null; if(!x) return; x.done=true; x.doneAt=D(0);
     toast('完成：'+x.title+'（今天內可再點一下取消）'); send({type:'updateTask',id:x.id,fields:{done:true}},x.p); render(); return; }
+  if(el=g('[data-wcfm]')){ const r=findW(el.dataset.wcfm); S.cf=null; if(!r) return; const p=r.p, w=r.w; p.waits=p.waits.filter(x=>x!==w); w.done=true; w.doneAt=D(0); (p.wd=p.wd||[]).push(w);
+    toast('已到：'+w.what+'（今天內可再點一下取消）'); send({type:'updateWait',id:w.id,done:true},p.id); render(); return; }
+  if(el=g('[data-wchk]')){ const r=findW(el.dataset.wchk); if(!r) return; const p=r.p, w=r.w;
+    if(!w.done){ S.cf='w'+w.id; render(); return; }
+    p.wd=(p.wd||[]).filter(x=>x!==w); w.done=false; w.doneAt=''; p.waits.push(w); S.cf=null;
+    toast('已改回等待中：'+w.what); send({type:'updateWait',id:w.id,done:false},p.id); render(); return; }
   if(el=g('[data-chk]')){
     const x=T.find(y=>y.id===el.dataset.chk); if(!x) return;
     if(!x.done){ S.cf=x.id; render(); return; }
@@ -753,7 +768,7 @@ document.addEventListener('input',ev=>{
 });
 function addProject(){
   const name=$('#np').value.trim(); if(!name){ $('#np').focus(); toast('請先輸入專案名稱'); return; }
-  const p={id:nid(),name,status:'',pos:0,cAt:new Date().toISOString(),ver:1,waits:[],launch:'',done:false,updatedAt:Date.now(),updatedBy:S.me}; P.push(p);
+  const p={id:nid(),name,status:'',pos:0,cAt:new Date().toISOString(),ver:1,waits:[],wd:[],launch:'',done:false,updatedAt:Date.now(),updatedBy:S.me}; P.push(p);
   send({type:'addProject',id:p.id,name});
   S.npDraft=''; render(); openP(p.id); toast('已新增專案：'+name+'，可以開始填狀態和指派任務');
 }
