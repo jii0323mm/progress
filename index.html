@@ -286,6 +286,10 @@ input.inp[type=date]{min-width:136px}
 .tr.u4{border-left:4px solid #5E9E6B;padding-left:9px}
 .legend i.u0{background:#9E2F25;border-color:#9E2F25}.legend i.u1{background:#D98278;border-color:#D98278}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
 .legend i.u3{background:#D9B32E;border-color:#D9B32E}.legend i.u4{background:#5E9E6B;border-color:#5E9E6B}
+/* 日常卡 */
+.dgrid{margin-top:14px}
+.pc.daily::before{background:#94A3B8!important}
+.pc.daily .ph h3{flex:0 0 auto!important}
 /* 最上方快速列 */
 .qbar{flex-basis:100%;display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .qbar::-webkit-scrollbar{display:none}
@@ -511,7 +515,7 @@ function render(){
       '<button data-tab="mine" aria-pressed="'+(S.tab==='mine')+'">我的任務<span class="badge '+(myLate?'hot':'')+'">'+mine.length+'</span></button>'+
     '</div>'+
     '<label class="me">我是<select id="me">'+USERS.map(u=>'<option '+(u===S.me?'selected':'')+'>'+u+'</option>').join('')+'</select></label>'+
-    (S.loaded&&S.tab==='proj'?'<div class="qbar"><button type="button" class="qadd" data-qadd>＋ 新增</button>'+P.filter(p=>!p.done).sort(byPos).map(p=>'<button type="button" data-jump="'+p.id+'">'+esc(shortP(p.name))+'</button>').join('')+'</div>':'');
+    (S.loaded&&S.tab==='proj'?'<div class="qbar"><button type="button" class="qadd" data-qadd>＋ 新增</button>'+P.filter(p=>!p.done).sort((a,b)=>isDaily(b)-isDaily(a)||byPos(a,b)).map(p=>'<button type="button" data-jump="'+p.id+'">'+esc(shortP(p.name))+'</button>').join('')+'</div>':'');
   if(!S.loaded) return;
   $('#main').innerHTML = (S.err?'<p class="err">'+esc(S.err)+'</p>':'') + (S.tab==='proj' ? projPage() : minePage());
   if(S.open) drawSheet();
@@ -519,7 +523,7 @@ function render(){
 
 function byPos(a,b){ return (a.pos||1e9)-(b.pos||1e9) || String(a.cAt||'').localeCompare(String(b.cAt||'')); }
 function moveP(id,dir){
-  const act=P.filter(p=>!p.done).sort(byPos), i=act.findIndex(p=>p.id===id), j=i+dir;
+  const act=P.filter(p=>!p.done&&!isDaily(p)).sort(byPos), i=act.findIndex(p=>p.id===id), j=i+dir;
   if(i<0||j<0||j>=act.length) return;
   [act[i],act[j]]=[act[j],act[i]]; act.forEach((p,k)=>p.pos=k+1);
   send({type:'reorder',ids:act.map(p=>p.id)}); render();
@@ -544,9 +548,12 @@ function todayCard(){
     (n?'':'<p class="none">三天內沒有到期或逾期的任務和等待項目。</p>')+
   '</section>';
 }
+const DAILY='日常';
+const isDaily=p=>p&&p.name===DAILY;
 function projPage(){
-  const act=P.filter(p=>!p.done).map(p=>Object.assign({p},info(p)));
+  const act=P.filter(p=>!p.done&&!isDaily(p)).map(p=>Object.assign({p},info(p)));
   act.sort((a,b)=>byPos(a.p,b.p)); // 固定順序，更新不會換位置
+  const dp=P.find(isDaily);
   const cnt=h=>act.filter(a=>a.health===h).length;
   const doneP=P.filter(p=>p.done);
   return '<div class="lead"><h1>'+act.length+' 個專案進行中</h1>'+
@@ -555,6 +562,7 @@ function projPage(){
     (cnt('green')?'<span class="pill green">順利 '+cnt('green')+'</span>':'')+LEGEND+DUELEG+'</div>'+todayCard()+
     '<div class="addf w2 addp"><input class="inp" id="np" placeholder="新增專案名稱，例如：硬幣發射器" value="'+esc(S.npDraft||'')+'"><span></span><button type="button" class="btn" id="addp">新增專案</button></div>'+
     (act.length?'<div class="grid">'+act.map(cardHTML).join('')+'</div>':'<div class="empty">還沒有進行中的專案，在上方輸入名稱新增第一個</div>')+
+    (dp?'<div class="grid dgrid">'+cardHTML(Object.assign({p:dp},info(dp)))+'</div>':'')+
     (doneP.length?'<details class="fold"><summary>已完成專案（'+doneP.length+'）</summary><div class="dlist">'+
       doneP.map(p=>'<div class="drow" data-p="'+p.id+'"><span class="nm">'+esc(p.name)+'</span><span class="chip">v'+p.ver+'</span></div>').join('')+
     '</div></details>':'');
@@ -563,8 +571,9 @@ function projPage(){
 function cardHTML(a){
   const p=a.p;
   const ws=p.waits.slice().sort((x,y)=>(x.eta||'9999').localeCompare(y.eta||'9999'));
-  return '<article class="pc '+a.health+'" data-p="'+p.id+'" tabindex="0">'+
-    '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+stagesHTML(p)+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>'+
+  return '<article class="pc '+a.health+(isDaily(p)?' daily':'')+'" data-p="'+p.id+'" tabindex="0">'+
+    (isDaily(p)?'<div class="ph"><h3>日常</h3><span class="meta">打掃、採買等非專案的事</span><span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>':
+    '<div class="ph"><h3>'+esc(p.name)+'</h3><span class="ver">v'+p.ver+'</span>'+stagesHTML(p)+(p.launch?'<span class="meta">發售 '+md(p.launch)+'</span>':'')+'<span class="meta upd">'+ago(p.updatedAt)+(p.updatedBy?'・'+esc(p.updatedBy):'')+'</span></div>')+
     '<div class="cols">'+
       '<section class="col"><h4>等待項目<span class="n">'+ws.length+'</span></h4>'+
         (ws.length?'<ul class="items">'+ws.map(w=>{const l=w.eta&&days(w.eta)<0;
@@ -622,10 +631,11 @@ function drawSheet(){
   const done=T.filter(x=>x.p===p.id&&x.done&&!doneToday(x));
   const d=S.draft;
   $('#sheet').innerHTML=
+    (isDaily(p)?'<div class="sh-h"><h3 style="margin:0;flex:1;font-size:18px">日常</h3><button class="x" id="x" aria-label="關閉">×</button></div>':
     '<div class="sh-h"><input class="inp nm" id="pname" value="'+esc(p.name)+'" aria-label="專案名稱"><button class="x" id="x" aria-label="關閉">×</button></div>'+
     '<div class="row2"><div><span class="lb">樣品版本</span><div class="stepper"><button id="vm" aria-label="版本減一">−</button><output>v'+p.ver+'</output><button id="vp" aria-label="版本加一">+</button></div></div>'+
       '<div><label class="lb" for="launch">預計發售日</label><input class="inp" type="date" id="launch" value="'+esc(p.launch)+'"></div></div>'+
-    '<div class="sec">目前狀態 '+LEGEND+'</div>'+stagesHTML(p)+
+    '<div class="sec">目前狀態 '+LEGEND+'</div>'+stagesHTML(p))+
     '<div class="sec">新增任務</div>'+
     '<div class="addf"><input class="inp" id="nt" placeholder="任務內容" value="'+esc(d.title)+'">'+
       '<select class="inp" id="nto" aria-label="指派給">'+USERS.map(u=>'<option '+((d.to||S.me)===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
@@ -646,14 +656,14 @@ function drawSheet(){
     '<div class="sec">所有進行中的任務（'+open.length+'）</div>'+
     (open.length?'<ul class="tl">'+open.map(x=>taskRow(x,false)).join('')+'</ul>':'<div class="empty">沒有進行中的任務</div>')+
     (done.length?'<details class="fold" style="margin-top:14px"><summary>已完成任務（'+done.length+'）</summary><ul class="tl">'+done.map(x=>taskRow(x,false)).join('')+'</ul></details>':'')+
-    '<div class="foot"><button class="btn ghost" id="pdel">刪除專案</button>'+(p.done?'':'<button class="btn ghost" id="pup" title="在總覽中往上移">↑ 上移</button><button class="btn ghost" id="pdn" title="在總覽中往下移">↓ 下移</button>')+'<span class="meta" style="flex:1;text-align:right">'+(p.done?'這個專案已完成':'')+'</span><button class="btn ghost" id="pdone">'+(p.done?'移回進行中':'標示專案完成')+'</button></div>';
+    (isDaily(p)?'':'<div class="foot"><button class="btn ghost" id="pdel">刪除專案</button>'+(p.done?'':'<button class="btn ghost" id="pup" title="在總覽中往上移">↑ 上移</button><button class="btn ghost" id="pdn" title="在總覽中往下移">↓ 下移</button>')+'<span class="meta" style="flex:1;text-align:right">'+(p.done?'這個專案已完成':'')+'</span><button class="btn ghost" id="pdone">'+(p.done?'移回進行中':'標示專案完成')+'</button></div>');
   $('#sheet').scrollTop=y;
 }
 function openP(id){ S.edit=null; S.delArm=null; S.open=id; S.draft={title:'',to:'',due:'',wwhat:'',weta:''}; $('#scrim').classList.add('open'); document.body.style.overflow='hidden'; drawSheet(); }
 // 快速新增：先選專案，再打開該專案並跳到新增欄位
 function openPick(){ S.open=null; S.pick=true; $('#scrim').classList.add('open'); document.body.style.overflow='hidden';
   $('#sheet').innerHTML='<div class="sh-h"><h3 style="margin:0;flex:1">要新增到哪個專案？</h3><button class="x" id="x" aria-label="關閉">×</button></div><div class="pick">'+
-    P.filter(p=>!p.done).sort(byPos).map(p=>'<div class="pkr"><span class="pkn">'+esc(p.name)+'</span><button type="button" class="btn sm" data-pt="'+p.id+'">＋任務</button><button type="button" class="btn ghost sm" data-pw="'+p.id+'">＋等待</button></div>').join('')+'</div>'; }
+    P.filter(p=>!p.done).sort((a,b)=>isDaily(b)-isDaily(a)||byPos(a,b)).map(p=>'<div class="pkr"><span class="pkn">'+esc(p.name)+'</span><button type="button" class="btn sm" data-pt="'+p.id+'">＋任務</button><button type="button" class="btn ghost sm" data-pw="'+p.id+'">＋等待</button></div>').join('')+'</div>'; }
 function jumpAdd(id,f){ S.pick=false; openP(id); setTimeout(()=>{ const el=$(f); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.focus(); } },60); }
 function closeP(){ S.open=null; S.pick=false; $('#scrim').classList.remove('open'); document.body.style.overflow=''; }
 function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove('show'),2200); }
