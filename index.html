@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="進度追蹤">
-<meta name="theme-color" content="#0B1020">
+<meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -286,64 +286,63 @@ input.inp[type=date]{min-width:136px}
 .tr.u4{border-left:4px solid #5E9E6B;padding-left:9px}
 .legend i.u0{background:#9E2F25;border-color:#9E2F25}.legend i.u1{background:#D98278;border-color:#D98278}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
 .legend i.u3{background:#D9B32E;border-color:#D9B32E}.legend i.u4{background:#5E9E6B;border-color:#5E9E6B}
-/* ===== 主題 v2：鮮豔科技感 ===== */
+/* ===== 主題 v2：活潑科技感（純色、無漸層） ===== */
 :root{
-  --bg:#F3F5FB; --surface:#FFFFFF; --sunk:#F5F7FC; --ink:#0F172A; --muted:#64748B; --line:#E3E8F2;
-  --brass:#5B5BF6; --brass-soft:#EEEEFF; --wait:#5B5BF6; --wait-soft:#EEEEFF;
-  --late:#F43F5E; --late-soft:#FFE4EA; --done:#5B5BF6; --done-soft:#EEEEFF;
-  --grad:linear-gradient(135deg,#6366F1 0%,#8B5CF6 55%,#06B6D4 100%);
-  --hot:linear-gradient(135deg,#FF3B5C 0%,#FF8A00 100%);
+  --bg:#F3F5FA; --surface:#FFFFFF; --sunk:#F6F7FB; --ink:#0F172A; --muted:#64748B; --line:#E2E7F0;
+  --brass:#5458E8; --brass-soft:#EEEFFE; --wait:#5458E8; --wait-soft:#EEEFFE;
+  --late:#E5485D; --late-soft:#FDECEF; --done:#5458E8; --done-soft:#EEEFFE;
+  --acc:#5458E8; --hotc:#E5485D;
 }
-body{background:radial-gradient(1200px 500px at 85% -10%,rgba(99,102,241,.10),transparent 60%),radial-gradient(900px 400px at -10% 0%,rgba(6,182,212,.08),transparent 60%),var(--bg);background-attachment:fixed}
-.top{background:#0B1020!important;color:#fff;border-bottom:0;box-shadow:0 6px 24px rgba(15,23,42,.18)}
-.brand{color:#fff;background:linear-gradient(90deg,#A5B4FC,#67E8F9);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.02em}
-.tabs{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+body{background:var(--bg)}
+.top{background:#111827!important;color:#fff;border-bottom:0}
+.brand{color:#fff;letter-spacing:.02em}
+.tabs{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
 .tabs button{color:#CBD5E1}
-.tabs button[aria-pressed="true"]{background:var(--grad);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.45)}
+.tabs button[aria-pressed="true"]{background:var(--acc);color:#fff}
 .tabs .badge,.tabs button .badge{background:rgba(255,255,255,.18)!important;color:#fff!important}
 .top label,.top .me,.top span{color:#CBD5E1}
-.top select{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.18)}
+.top select{background:rgba(255,255,255,.07);color:#fff;border-color:rgba(255,255,255,.18)}
 .top select option{color:#0F172A}
-.btn{background:var(--grad);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.30)}
-.btn.ghost{background:var(--surface);color:var(--ink);box-shadow:none;border:1px solid var(--line)}
-.pc{border:1px solid var(--line);border-top:0;border-radius:16px;position:relative;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.05)}
-.pc::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--grad)}
-.pc.red::before{background:var(--hot)}
-.pc:hover{box-shadow:0 8px 26px rgba(99,102,241,.16);border-color:#C7CBF7}
-.ver{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.col{background:var(--sunk);border:1px solid var(--line);border-radius:12px}
-.pill.red{color:#E11D48!important;border-color:#FDA4B4;background:#FFF1F4!important}
+.btn{background:var(--acc);color:#fff}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.pc{border:1px solid var(--line);border-top:0;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,.04)}
+.pc::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--acc)}
+.pc.red::before{background:var(--hotc)}
+.pc:hover{border-color:#C9CCF5;box-shadow:0 4px 14px rgba(15,23,42,.07)}
+.ver{color:var(--acc)}
+.col{background:var(--sunk);border:1px solid var(--line);border-radius:10px}
+.pill.red{color:#D63750!important;border-color:#F5B5BF;background:#FEF2F4!important}
 /* 進度格 */
-.sg{border-radius:999px;padding:5px 9px;background:#EEF1F7;border-color:transparent;color:#94A3B8}
-.sg.s1{background:linear-gradient(135deg,#FFB020,#FF8A00);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(255,138,0,.35)}
-.sg.s2{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35)}
+.sg{border-radius:999px;padding:5px 9px;background:#EDF0F5;border-color:transparent;color:#8A96A8}
+.sg.s1{background:#F5A524;border-color:#F5A524;color:#fff}
+.sg.s2{background:var(--acc);border-color:var(--acc);color:#fff}
 .legend i{border-radius:50%}
-.legend i.s1{background:#FF9F0A;border-color:#FF9F0A}.legend i.s2{background:#7C5CF6;border-color:#7C5CF6}
+.legend i.s1{background:#F5A524;border-color:#F5A524}.legend i.s2{background:var(--acc);border-color:var(--acc)}
 /* 期限五級 */
 .chip{border-radius:999px;padding:1px 9px}
-.chip.u0{background:linear-gradient(135deg,#FF2D55,#FF5E3A);color:#fff;box-shadow:0 2px 8px rgba(255,45,85,.35)}
-.chip.u1{background:#FFE4EA;color:#E11D48}
-.chip.u2{background:#FFEDD5;color:#EA580C}
-.chip.u3{background:#FEF3C7;color:#B45309}
-.chip.u4{background:#D1FAE5;color:#059669}
-.tr.u0,.trc.u0{border-left-color:#FF2D55}.tr.u1,.trc.u1{border-left-color:#FB7185}
-.tr.u2,.trc.u2{border-left-color:#FB923C}.tr.u3,.trc.u3{border-left-color:#FACC15}.tr.u4,.trc.u4{border-left-color:#34D399}
-.legend i.u0{background:#FF2D55;border-color:#FF2D55}.legend i.u1{background:#FB7185;border-color:#FB7185}
-.legend i.u2{background:#FB923C;border-color:#FB923C}.legend i.u3{background:#FACC15;border-color:#FACC15}.legend i.u4{background:#34D399;border-color:#34D399}
+.chip.u0{background:#E5485D;color:#fff}
+.chip.u1{background:#FDE8EB;color:#D63750}
+.chip.u2{background:#FEEEDC;color:#D9620F}
+.chip.u3{background:#FDF4CF;color:#A5730A}
+.chip.u4{background:#DDF5EA;color:#178A5B}
+.tr.u0,.trc.u0{border-left-color:#E5485D}.tr.u1,.trc.u1{border-left-color:#F39AA7}
+.tr.u2,.trc.u2{border-left-color:#F59E4C}.tr.u3,.trc.u3{border-left-color:#EBC43A}.tr.u4,.trc.u4{border-left-color:#4CC28E}
+.legend i.u0{background:#E5485D;border-color:#E5485D}.legend i.u1{background:#F39AA7;border-color:#F39AA7}
+.legend i.u2{background:#F59E4C;border-color:#F59E4C}.legend i.u3{background:#EBC43A;border-color:#EBC43A}.legend i.u4{background:#4CC28E;border-color:#4CC28E}
 /* 近三天卡片 */
-.today{border:1px solid #FBCFD9;border-top:0;border-radius:16px;position:relative;overflow:hidden;box-shadow:0 6px 24px rgba(244,63,94,.10)}
-.today::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--hot)}
-.today h2{background:var(--hot);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.today{border:1px solid #F6C9D0;border-top:0;border-radius:14px;position:relative;overflow:hidden}
+.today::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--hotc)}
+.today h2{color:#D63750}
 .trc,.tr{border-radius:10px}
-.chk.on{background:var(--grad);border-color:transparent}
-.chk:hover{border-color:#6366F1;color:#6366F1}
-.chip.prod,.trc .pj{color:#5B5BF6}
+.chk.on{background:var(--acc);border-color:var(--acc)}
+.chk:hover{border-color:var(--acc);color:var(--acc)}
+.chip.prod,.trc .pj{color:var(--acc)}
 /* 人員顏色 */
 .av{border:0!important;color:#fff!important}
-.av[data-u="星J"]{background:#06B6D4}.av[data-u="皓鈞"]{background:#6366F1}.av[data-u="宏毅"]{background:#EC4899}.av[data-u="曹楊"]{background:#F59E0B}
-.sheet{border-radius:18px 18px 0 0}
-@media (min-width:720px){.sheet{border-radius:18px}}
-.inp:focus{border-color:#8B8CF8;box-shadow:0 0 0 3px rgba(99,102,241,.15);outline:0}
+.av[data-u="星J"]{background:#1BA9C4}.av[data-u="皓鈞"]{background:#5458E8}.av[data-u="宏毅"]{background:#D9508A}.av[data-u="曹楊"]{background:#E0952A}
+.sheet{border-radius:16px 16px 0 0}
+@media (min-width:720px){.sheet{border-radius:16px}}
+.inp:focus{border-color:#9EA1F3;box-shadow:0 0 0 3px rgba(84,88,232,.12);outline:0}
 </style>
 </head>
 <body>
