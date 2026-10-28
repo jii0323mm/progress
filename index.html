@@ -286,6 +286,15 @@ input.inp[type=date]{min-width:136px}
 .tr.u4{border-left:4px solid #5E9E6B;padding-left:9px}
 .legend i.u0{background:#9E2F25;border-color:#9E2F25}.legend i.u1{background:#D98278;border-color:#D98278}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
 .legend i.u3{background:#D9B32E;border-color:#D9B32E}.legend i.u4{background:#5E9E6B;border-color:#5E9E6B}
+/* 打勾確認、今天完成的變灰 */
+.cfw{display:inline-flex;gap:4px;flex:0 0 auto;align-items:center}
+.cfm{border:0;border-radius:999px;background:var(--acc,#5458E8);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;white-space:nowrap}
+.cfx{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;padding:3px 8px;white-space:nowrap}
+.tr.isdone,.trc.isdone{background:var(--sunk);border-left-color:#CBD5E1!important}
+.tr.isdone .tt,.trc.isdone .t1,.items li.isdone .tt{color:#94A3B8;text-decoration:line-through;font-weight:500}
+.trc.isdone .chip,.tr.isdone .chip,.items li.isdone .chip{background:#EDF0F5!important;color:#94A3B8!important}
+.items li.isdone{opacity:.7}
+.chk.on{opacity:.85}
 /* ===== 主題 v2：活潑科技感（純色、無漸層） ===== */
 :root{
   --bg:#F3F5FA; --surface:#FFFFFF; --sunk:#F6F7FB; --ink:#0F172A; --muted:#64748B; --line:#E2E7F0;
@@ -359,6 +368,10 @@ const T0=new Date(); T0.setHours(0,0,0,0);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const D=n=>iso(new Date(T0.getTime()+n*864e5));
 const days=s=>Math.round((new Date(s+'T00:00:00')-T0)/864e5);
+// 今天打勾的任務先變灰色留著，隔天才收起來
+const doneToday=x=>x.done&&x.doneAt===D(0);
+const vis=x=>!x.done||doneToday(x);
+const chkBtn=x=>x.done?'<button class="chk on" data-chk="'+x.id+'" aria-label="取消完成">✓</button>':(S.cf===x.id?'<span class="cfw"><button class="cfm" data-cfm="'+x.id+'">確認完成</button><button class="cfx" data-cfx>取消</button></span>':'<button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button>');
 const md=s=>{const p=s.split('-');return +p[1]+'/'+(+p[2]);};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -492,17 +505,17 @@ function moveP(id,dir){
 }
 function shortP(n){ return String(n||'').replace(/\s*[（(][^）)]*[）)]\s*$/,''); }
 function todayRow(x){ const n=days(x.due);
-  return '<li class="trc '+urg(n)+'"><button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button><span class="t1">'+esc(x.title)+'</span><span class="pj" data-p="'+x.p+'">'+esc(shortP(pName(x.p)))+'</span>'+av(x.to)+'<span class="chip '+urg(n)+'">'+dayTxt(n)+'</span></li>'; }
+  return '<li class="trc '+(x.done?'isdone':urg(n))+'">'+chkBtn(x)+'<span class="t1">'+esc(x.title)+'</span><span class="pj" data-p="'+x.p+'">'+esc(shortP(pName(x.p)))+'</span>'+av(x.to)+'<span class="chip '+urg(n)+'">'+dayTxt(n)+'</span></li>'; }
 function dayTxt(n){ return n<0?'逾期 '+(-n)+' 天':n===0?'今天':n===1?'明天':n+' 天後'; }
 // 最上方：三天內（含逾期）要處理的任務與等待項目
 function todayCard(){
   const live=new Set(P.filter(p=>!p.done).map(p=>p.id));
-  const tk=T.filter(x=>!x.done&&x.due&&days(x.due)<=3&&live.has(x.p)).sort(byDue);
+  const tk=T.filter(x=>vis(x)&&x.due&&days(x.due)<=3&&live.has(x.p)).sort(byDue);
   const ws=[]; P.filter(p=>!p.done).forEach(p=>p.waits.forEach(w=>{ if(w.eta&&days(w.eta)<=3) ws.push({w,p}); }));
   ws.sort((a,b)=>a.w.eta.localeCompare(b.w.eta));
   const grp=[['已逾期','late',x=>days(x.due)<0],['今天','',x=>days(x.due)===0],['明天','',x=>days(x.due)===1],['3 天內','',x=>days(x.due)>=2]];
   const wrow=o=>{ const k=days(o.w.eta); return '<li class="trc '+urg(k)+' wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip '+urg(k)+'">'+(k<0?'過 '+(-k)+' 天':dayTxt(k))+'</span></li>'; };
-  const n=tk.length+ws.length, d=new Date();
+  const n=tk.filter(x=>!x.done).length+ws.length, d=new Date();
   return '<section class="today"><div class="th"><h2>近三天要處理</h2><span class="tdate">今天 '+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
     grp.map(g=>{ const l=tk.filter(g[2]); return l.length?'<div class="grp '+g[1]+'">'+g[0]+'<span class="n">'+l.length+'</span></div><ul class="tlc">'+l.map(todayRow).join('')+'</ul>':''; }).join('')+
     (ws.length?'<div class="grp">該到的等待項目<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
@@ -535,8 +548,8 @@ function cardHTML(a){
         (ws.length?'<ul class="items">'+ws.map(w=>{const l=w.eta&&days(w.eta)<0;
           return '<li class="'+(l?'late':'wait')+'"><b>'+esc(w.what)+'</b><span>'+(waitWhen(w).replace(/^・/,'')||'沒有預計日期')+'</span></li>';}).join('')+'</ul>':'<p class="none">沒有在等的東西</p>')+'</section>'+
       '<section class="col"><h4>待辦事項<span class="n">'+a.open.length+'</span></h4>'+
-        (a.open.length?'<ul class="items">'+a.open.map(x=>{const n=x.due?days(x.due):99;
-          return '<li class="'+(n<0?'late':n<=1?'soon':'')+'">'+av(x.to)+'<span class="tt">'+esc(x.title)+'</span>'+dueChip(x)+'</li>';}).join('')+'</ul>':'<p class="none">沒有待辦事項</p>')+'</section>'+
+        (a.open.length||T.some(x=>x.p===p.id&&doneToday(x))?'<ul class="items">'+a.open.concat(T.filter(x=>x.p===p.id&&doneToday(x))).map(x=>{const n=x.due?days(x.due):99;
+          return '<li class="'+(x.done?'isdone':n<0?'late':n<=1?'soon':'')+'">'+av(x.to)+'<span class="tt">'+esc(x.title)+'</span>'+dueChip(x)+'</li>';}).join('')+'</ul>':'<p class="none">沒有待辦事項</p>')+'</section>'+
     '</div>'+
   '</article>';
 }
@@ -550,7 +563,7 @@ function taskRow(x,showProj,showWho){
       '<button type="button" class="btn ghost sm" data-cancel>取消</button><button type="button" class="btn sm" data-savet="'+x.id+'">儲存</button></div></div></li>';
   const n=x.due&&!x.done?days(x.due):99;
   const cls=x.done?'isdone':x.due?urg(n):'';
-  return '<li class="tr '+cls+'"><button class="chk '+(x.done?'on':'')+'" data-chk="'+x.id+'" aria-label="'+(x.done?'改回進行中':'標示完成')+'">✓</button>'+
+  return '<li class="tr '+cls+'">'+chkBtn(x)+
     '<div class="tb"><p class="tt">'+esc(x.title)+'</p><div class="meta">'+
       (showProj?'<span class="chip prod" data-p="'+x.p+'">'+esc(pName(x.p))+'</span>':'')+(!showProj||showWho?av(x.to)+'<span>'+esc(x.to)+'</span>':'')+
       dueChip(x)+
@@ -560,17 +573,17 @@ function taskRow(x,showProj,showWho){
 }
 
 function minePage(){
-  const open=T.filter(x=>x.to===S.me&&!x.done).sort(byDue);
-  const done=T.filter(x=>x.to===S.me&&x.done).sort((a,b)=>b.doneAt.localeCompare(a.doneAt));
+  const open=T.filter(x=>x.to===S.me&&vis(x)).sort(byDue);
+  const done=T.filter(x=>x.to===S.me&&x.done&&!doneToday(x)).sort((a,b)=>b.doneAt.localeCompare(a.doneAt));
   const g=[
-    ['已逾期','late',open.filter(x=>x.due&&days(x.due)<0)],
+    ['已逾期','late',open.filter(x=>!x.done&&x.due&&days(x.due)<0)],
     ['今天・明天','',open.filter(x=>x.due&&days(x.due)>=0&&days(x.due)<=1)],
     ['這週','',open.filter(x=>x.due&&days(x.due)>=2&&days(x.due)<=7)],
     ['之後','',open.filter(x=>x.due&&days(x.due)>7)],
     ['沒有期限','',open.filter(x=>!x.due)],
   ].filter(x=>x[2].length);
   const late=g.length&&g[0][0]==='已逾期'?g[0][2].length:0;
-  return '<div class="mywrap"><div class="lead"><h1>'+esc(S.me)+' 的進行中任務：'+open.length+' 件</h1>'+
+  return '<div class="mywrap"><div class="lead"><h1>'+esc(S.me)+' 的進行中任務：'+open.filter(x=>!x.done).length+' 件</h1>'+
       (late?'<span class="pill red">逾期 '+late+'</span>':open.length?'<span class="pill green">沒有逾期</span>':'')+'</div>'+
     (open.length? g.map(x=>'<div class="grp '+x[1]+'">'+x[0]+'<span class="n">'+x[2].length+'</span></div><ul class="tl">'+x[2].map(y=>taskRow(y,true)).join('')+'</ul>').join('')
       :'<div class="empty">目前沒有指派給你的任務</div>')+
@@ -582,8 +595,8 @@ function minePage(){
 function drawSheet(){
   const p=P.find(x=>x.id===S.open); if(!p) return;
   const y=$('#sheet').scrollTop;
-  const open=T.filter(x=>x.p===p.id&&!x.done).sort(byDue);
-  const done=T.filter(x=>x.p===p.id&&x.done);
+  const open=T.filter(x=>x.p===p.id&&vis(x)).sort(byDue);
+  const done=T.filter(x=>x.p===p.id&&x.done&&!doneToday(x));
   const d=S.draft;
   $('#sheet').innerHTML=
     '<div class="sh-h"><input class="inp nm" id="pname" value="'+esc(p.name)+'" aria-label="專案名稱"><button class="x" id="x" aria-label="關閉">×</button></div>'+
@@ -629,9 +642,14 @@ document.addEventListener('click',ev=>{
     S.pass=pw; S.gateErr=''; store.set('pt_user',S.me); store.set('pt_pass',pw); render(); load(true); return;
   }
   if(el=g('[data-tab]')){ store.set('v3_tab',el.dataset.tab); S.edit=null; S.tab=el.dataset.tab; render(); window.scrollTo(0,0); return; }
+  if(g('[data-cfx]')){ S.cf=null; render(); return; }
+  if(el=g('[data-cfm]')){ const x=T.find(y=>y.id===el.dataset.cfm); S.cf=null; if(!x) return; x.done=true; x.doneAt=D(0);
+    toast('完成：'+x.title+'（今天內可再點一下取消）'); send({type:'updateTask',id:x.id,fields:{done:true}},x.p); render(); return; }
   if(el=g('[data-chk]')){
-    const x=T.find(y=>y.id===el.dataset.chk); x.done=!x.done; x.doneAt=x.done?D(0):'';
-    toast(x.done?'完成：'+x.title:'已改回進行中'); send({type:'updateTask',id:x.id,fields:{done:x.done}},x.p); render(); return;
+    const x=T.find(y=>y.id===el.dataset.chk); if(!x) return;
+    if(!x.done){ S.cf=x.id; render(); return; }
+    x.done=false; x.doneAt=''; S.cf=null;
+    toast('已取消完成：'+x.title); send({type:'updateTask',id:x.id,fields:{done:false}},x.p); render(); return;
   }
   if(g('#addt')){ addTask(); return; }
   if(g('#addw')){ addWait(); return; }
