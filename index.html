@@ -263,7 +263,7 @@ input.inp[type=date]{min-width:136px}
 .wtag{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
 /* 今天要處理：精簡單行 */
 .tlc{list-style:none;margin:0;padding:0;display:grid;gap:4px}
-.trc{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid #C0564B;border-radius:8px;padding:5px 10px 5px 8px;min-width:0;font-size:14px}
+.trc{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:5px 10px 5px 8px;min-width:0;font-size:14px}
 .trc .chk{flex:0 0 22px;height:22px;margin:0;font-size:12px}
 .trc .t1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
 .trc .pj{flex:0 1 auto;max-width:34%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--brass);cursor:pointer}
@@ -273,15 +273,18 @@ input.inp[type=date]{min-width:136px}
 .today .grp{margin:10px 0 4px}
 @media (max-width:600px){.today{padding:10px 10px 12px}.today h2{font-size:16px}.trc{gap:6px;padding:4px 8px 4px 6px;font-size:13.5px}.trc .pj{max-width:30%}}
 /* 期限顏色分級 */
+.trc.u0{border-left-color:#9E2F25}.trc.u1{border-left-color:#D98278}.trc.u2{border-left-color:#E08A3C}.trc.u3{border-left-color:#D9B32E}.trc.u4{border-left-color:#5E9E6B}
+.chip.u0{background:#9E2F25;color:#fff;border-color:transparent;font-weight:700}
 .chip.u1{background:#F6E1DE;color:#A0433A;border-color:transparent;font-weight:700}
 .chip.u2{background:#FBE6D2;color:#A1561A;border-color:transparent;font-weight:700}
 .chip.u3{background:#F8EFC6;color:#7A630A;border-color:transparent;font-weight:700}
 .chip.u4{background:#E2F0E4;color:#2F6B3C;border-color:transparent;font-weight:700}
-.tr.u1{border-left:4px solid #C0564B;padding-left:9px}
+.tr.u0{border-left:4px solid #9E2F25;padding-left:9px}
+.tr.u1{border-left:4px solid #D98278;padding-left:9px}
 .tr.u2{border-left:4px solid #E08A3C;padding-left:9px}
 .tr.u3{border-left:4px solid #D9B32E;padding-left:9px}
 .tr.u4{border-left:4px solid #5E9E6B;padding-left:9px}
-.legend i.u1{background:#C0564B;border-color:#C0564B}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
+.legend i.u0{background:#9E2F25;border-color:#9E2F25}.legend i.u1{background:#D98278;border-color:#D98278}.legend i.u2{background:#E08A3C;border-color:#E08A3C}
 .legend i.u3{background:#D9B32E;border-color:#D9B32E}.legend i.u4{background:#5E9E6B;border-color:#5E9E6B}
 </style>
 </head>
@@ -331,9 +334,9 @@ function info(p){
   const rest=open.filter(x=>!late.includes(x));
   return {open,late,health,block,rest};
 }
-// 期限分級：紅 <3 天（含逾期）、橘 ≤7 天、黃 ≤30 天、綠 >30 天
-function urg(n){ return n<3?'u1':n<=7?'u2':n<=30?'u3':'u4'; }
-const DUELEG='<span class="legend"><span>期限：</span><span><i class="u1"></i>3 天內</span><span><i class="u2"></i>7 天內</span><span><i class="u3"></i>1 個月內</span><span><i class="u4"></i>1 個月以上</span></span>';
+// 期限分級：深紅 ≤1 天（含逾期）、紅 ≤3 天、橘 ≤7 天、黃 ≤30 天、綠 >30 天
+function urg(n){ return n<=1?'u0':n<=3?'u1':n<=7?'u2':n<=30?'u3':'u4'; }
+const DUELEG='<span class="legend"><span>期限：</span><span><i class="u0"></i>1 天內</span><span><i class="u1"></i>3 天內</span><span><i class="u2"></i>7 天內</span><span><i class="u3"></i>1 個月內</span><span><i class="u4"></i>1 個月以上</span></span>';
 function dueChip(x){
   if(!x.due) return '<span class="chip">沒有期限</span>';
   if(x.done) return '<span class="chip">'+md(x.due)+'</span>';
@@ -432,20 +435,21 @@ function moveP(id,dir){
 }
 function shortP(n){ return String(n||'').replace(/\s*[（(][^）)]*[）)]\s*$/,''); }
 function todayRow(x){ const n=days(x.due);
-  return '<li class="trc u1"><button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button><span class="t1">'+esc(x.title)+'</span><span class="pj" data-p="'+x.p+'">'+esc(shortP(pName(x.p)))+'</span>'+av(x.to)+'<span class="chip u1">'+(n<0?'逾期 '+(-n)+' 天':'今天')+'</span></li>'; }
+  return '<li class="trc '+urg(n)+'"><button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button><span class="t1">'+esc(x.title)+'</span><span class="pj" data-p="'+x.p+'">'+esc(shortP(pName(x.p)))+'</span>'+av(x.to)+'<span class="chip '+urg(n)+'">'+dayTxt(n)+'</span></li>'; }
+function dayTxt(n){ return n<0?'逾期 '+(-n)+' 天':n===0?'今天':n===1?'明天':n+' 天後'; }
+// 最上方：三天內（含逾期）要處理的任務與等待項目
 function todayCard(){
   const live=new Set(P.filter(p=>!p.done).map(p=>p.id));
-  const tk=T.filter(x=>!x.done&&x.due&&days(x.due)<=0&&live.has(x.p)).sort(byDue);
-  const ws=[]; P.filter(p=>!p.done).forEach(p=>p.waits.forEach(w=>{ if(w.eta&&days(w.eta)<=0) ws.push({w,p}); }));
+  const tk=T.filter(x=>!x.done&&x.due&&days(x.due)<=3&&live.has(x.p)).sort(byDue);
+  const ws=[]; P.filter(p=>!p.done).forEach(p=>p.waits.forEach(w=>{ if(w.eta&&days(w.eta)<=3) ws.push({w,p}); }));
   ws.sort((a,b)=>a.w.eta.localeCompare(b.w.eta));
-  const late=tk.filter(x=>days(x.due)<0), today=tk.filter(x=>days(x.due)===0);
-  const wrow=o=>'<li class="trc u1 wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip u1">'+(days(o.w.eta)<0?'過 '+(-days(o.w.eta))+' 天':'今天')+'</span></li>';
+  const grp=[['已逾期','late',x=>days(x.due)<0],['今天','',x=>days(x.due)===0],['明天','',x=>days(x.due)===1],['3 天內','',x=>days(x.due)>=2]];
+  const wrow=o=>{ const k=days(o.w.eta); return '<li class="trc '+urg(k)+' wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip '+urg(k)+'">'+(k<0?'過 '+(-k)+' 天':dayTxt(k))+'</span></li>'; };
   const n=tk.length+ws.length, d=new Date();
-  return '<section class="today"><div class="th"><h2>今天要處理</h2><span class="tdate">'+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
-    (late.length?'<div class="grp late">已逾期<span class="n">'+late.length+'</span></div><ul class="tlc">'+late.map(todayRow).join('')+'</ul>':'')+
-    (today.length?'<div class="grp">今天到期<span class="n">'+today.length+'</span></div><ul class="tlc">'+today.map(todayRow).join('')+'</ul>':'')+
-    (ws.length?'<div class="grp">今天該到<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
-    (n?'':'<p class="none">今天沒有到期或逾期的任務和等待項目。</p>')+
+  return '<section class="today"><div class="th"><h2>近三天要處理</h2><span class="tdate">今天 '+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
+    grp.map(g=>{ const l=tk.filter(g[2]); return l.length?'<div class="grp '+g[1]+'">'+g[0]+'<span class="n">'+l.length+'</span></div><ul class="tlc">'+l.map(todayRow).join('')+'</ul>':''; }).join('')+
+    (ws.length?'<div class="grp">該到的等待項目<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
+    (n?'':'<p class="none">三天內沒有到期或逾期的任務和等待項目。</p>')+
   '</section>';
 }
 function projPage(){
