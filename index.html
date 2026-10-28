@@ -517,8 +517,9 @@ function todayCard(){
   const wrow=o=>{ const k=days(o.w.eta); return '<li class="trc '+urg(k)+' wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip '+urg(k)+'">'+(k<0?'過 '+(-k)+' 天':dayTxt(k))+'</span></li>'; };
   const n=tk.filter(x=>!x.done).length+ws.length, d=new Date();
   return '<section class="today"><div class="th"><h2>近三天要處理</h2><span class="tdate">今天 '+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
-    grp.map(g=>{ const l=tk.filter(g[2]); return l.length?'<div class="grp '+g[1]+'">'+g[0]+'<span class="n">'+l.length+'</span></div><ul class="tlc">'+l.map(todayRow).join('')+'</ul>':''; }).join('')+
+    grp.map(g=>{ const l=tk.filter(x=>!x.done&&g[2](x)); return l.length?'<div class="grp '+g[1]+'">'+g[0]+'<span class="n">'+l.length+'</span></div><ul class="tlc">'+l.map(todayRow).join('')+'</ul>':''; }).join('')+
     (ws.length?'<div class="grp">該到的等待項目<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
+    (tk.some(x=>x.done)?'<div class="grp">今天已完成<span class="n">'+tk.filter(x=>x.done).length+'</span></div><ul class="tlc">'+tk.filter(x=>x.done).map(todayRow).join('')+'</ul>':'')+
     (n?'':'<p class="none">三天內沒有到期或逾期的任務和等待項目。</p>')+
   '</section>';
 }
@@ -577,10 +578,11 @@ function minePage(){
   const done=T.filter(x=>x.to===S.me&&x.done&&!doneToday(x)).sort((a,b)=>b.doneAt.localeCompare(a.doneAt));
   const g=[
     ['已逾期','late',open.filter(x=>!x.done&&x.due&&days(x.due)<0)],
-    ['今天・明天','',open.filter(x=>x.due&&days(x.due)>=0&&days(x.due)<=1)],
-    ['這週','',open.filter(x=>x.due&&days(x.due)>=2&&days(x.due)<=7)],
-    ['之後','',open.filter(x=>x.due&&days(x.due)>7)],
-    ['沒有期限','',open.filter(x=>!x.due)],
+    ['今天・明天','',open.filter(x=>!x.done&&x.due&&days(x.due)>=0&&days(x.due)<=1)],
+    ['這週','',open.filter(x=>!x.done&&x.due&&days(x.due)>=2&&days(x.due)<=7)],
+    ['之後','',open.filter(x=>!x.done&&x.due&&days(x.due)>7)],
+    ['沒有期限','',open.filter(x=>!x.done&&!x.due)],
+    ['今天已完成','',open.filter(x=>x.done)],
   ].filter(x=>x[2].length);
   const late=g.length&&g[0][0]==='已逾期'?g[0][2].length:0;
   return '<div class="mywrap"><div class="lead"><h1>'+esc(S.me)+' 的進行中任務：'+open.filter(x=>!x.done).length+' 件</h1>'+
@@ -595,7 +597,7 @@ function minePage(){
 function drawSheet(){
   const p=P.find(x=>x.id===S.open); if(!p) return;
   const y=$('#sheet').scrollTop;
-  const open=T.filter(x=>x.p===p.id&&vis(x)).sort(byDue);
+  const open=T.filter(x=>x.p===p.id&&vis(x)).sort((a,b)=>(a.done-b.done)||byDue(a,b));
   const done=T.filter(x=>x.p===p.id&&x.done&&!doneToday(x));
   const d=S.draft;
   $('#sheet').innerHTML=
