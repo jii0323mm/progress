@@ -261,6 +261,17 @@ input.inp[type=date]{min-width:136px}
 .today .none{margin:8px 0 0;color:var(--muted);font-size:14px}
 .tr.wt{cursor:pointer;align-items:center}
 .wtag{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+/* 今天要處理：精簡單行 */
+.tlc{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.trc{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid #C0564B;border-radius:8px;padding:5px 10px 5px 8px;min-width:0;font-size:14px}
+.trc .chk{flex:0 0 22px;height:22px;margin:0;font-size:12px}
+.trc .t1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.trc .pj{flex:0 1 auto;max-width:34%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--brass);cursor:pointer}
+.trc .av{flex:0 0 auto}
+.trc .chip{flex:0 0 auto}
+.trc .wtag{flex:0 0 auto;font-size:11px;padding:1px 5px}
+.today .grp{margin:10px 0 4px}
+@media (max-width:600px){.today{padding:10px 10px 12px}.today h2{font-size:16px}.trc{gap:6px;padding:4px 8px 4px 6px;font-size:13.5px}.trc .pj{max-width:30%}}
 /* 期限顏色分級 */
 .chip.u1{background:#F6E1DE;color:#A0433A;border-color:transparent;font-weight:700}
 .chip.u2{background:#FBE6D2;color:#A1561A;border-color:transparent;font-weight:700}
@@ -419,18 +430,21 @@ function moveP(id,dir){
   [act[i],act[j]]=[act[j],act[i]]; act.forEach((p,k)=>p.pos=k+1);
   send({type:'reorder',ids:act.map(p=>p.id)}); render();
 }
+function shortP(n){ return String(n||'').replace(/\s*[（(][^）)]*[）)]\s*$/,''); }
+function todayRow(x){ const n=days(x.due);
+  return '<li class="trc u1"><button class="chk" data-chk="'+x.id+'" aria-label="標示完成">✓</button><span class="t1">'+esc(x.title)+'</span><span class="pj" data-p="'+x.p+'">'+esc(shortP(pName(x.p)))+'</span>'+av(x.to)+'<span class="chip u1">'+(n<0?'逾期 '+(-n)+' 天':'今天')+'</span></li>'; }
 function todayCard(){
   const live=new Set(P.filter(p=>!p.done).map(p=>p.id));
   const tk=T.filter(x=>!x.done&&x.due&&days(x.due)<=0&&live.has(x.p)).sort(byDue);
   const ws=[]; P.filter(p=>!p.done).forEach(p=>p.waits.forEach(w=>{ if(w.eta&&days(w.eta)<=0) ws.push({w,p}); }));
   ws.sort((a,b)=>a.w.eta.localeCompare(b.w.eta));
   const late=tk.filter(x=>days(x.due)<0), today=tk.filter(x=>days(x.due)===0);
-  const wrow=o=>'<li class="tr wt u1" data-p="'+o.p.id+'"><span class="wtag">等待</span><div class="tb"><p class="tt">'+esc(o.w.what)+'</p><div class="meta"><span class="chip prod">'+esc(o.p.name)+'</span><span class="chip u1">'+(days(o.w.eta)<0?'預計 '+md(o.w.eta)+'，已過 '+(-days(o.w.eta))+' 天':'今天應該到')+'</span></div></div></li>';
+  const wrow=o=>'<li class="trc u1 wt" data-p="'+o.p.id+'"><span class="wtag">等待</span><span class="t1">'+esc(o.w.what)+'</span><span class="pj">'+esc(shortP(o.p.name))+'</span><span class="chip u1">'+(days(o.w.eta)<0?'過 '+(-days(o.w.eta))+' 天':'今天')+'</span></li>';
   const n=tk.length+ws.length, d=new Date();
   return '<section class="today"><div class="th"><h2>今天要處理</h2><span class="tdate">'+(d.getMonth()+1)+'/'+d.getDate()+' 週'+'日一二三四五六'[d.getDay()]+'</span><span class="pill '+(n?'red':'green')+'">'+(n?n+' 件':'沒有到期事項')+'</span></div>'+
-    (late.length?'<div class="grp late">已逾期<span class="n">'+late.length+'</span></div><ul class="tl">'+late.map(x=>taskRow(x,true,true)).join('')+'</ul>':'')+
-    (today.length?'<div class="grp">今天到期<span class="n">'+today.length+'</span></div><ul class="tl">'+today.map(x=>taskRow(x,true,true)).join('')+'</ul>':'')+
-    (ws.length?'<div class="grp">今天該到的等待項目<span class="n">'+ws.length+'</span></div><ul class="tl">'+ws.map(wrow).join('')+'</ul>':'')+
+    (late.length?'<div class="grp late">已逾期<span class="n">'+late.length+'</span></div><ul class="tlc">'+late.map(todayRow).join('')+'</ul>':'')+
+    (today.length?'<div class="grp">今天到期<span class="n">'+today.length+'</span></div><ul class="tlc">'+today.map(todayRow).join('')+'</ul>':'')+
+    (ws.length?'<div class="grp">今天該到<span class="n">'+ws.length+'</span></div><ul class="tlc">'+ws.map(wrow).join('')+'</ul>':'')+
     (n?'':'<p class="none">今天沒有到期或逾期的任務和等待項目。</p>')+
   '</section>';
 }
