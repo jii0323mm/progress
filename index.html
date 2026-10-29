@@ -381,6 +381,8 @@ body{background:var(--bg)}
 .legend i.s1{background:#3B7CF0;border-color:#3B7CF0}
 .sg.s2{background:#22A06B;border-color:#22A06B;color:#fff}
 .legend i.s2{background:#22A06B;border-color:#22A06B}
+/* 觸控裝置：不顯示 hover 狀態，避免點完後下一個圓圈看起來像被勾選 */
+@media (hover:none){.chk:not(.on):hover{border-color:var(--line);color:transparent}}
 </style>
 </head>
 <body>
